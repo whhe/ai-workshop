@@ -1,0 +1,44 @@
+---
+description: Project-wide conventions — workflow, code style, git, config, and ORM patterns
+alwaysApply: true
+---
+
+# Workflow
+
+- When requirements or context are ambiguous, **ask for clarification** before proceeding. Do not guess.
+- After completing a task:
+  1. Review **only changed files** — clean up leftover code (temp scripts, debug logging, unused imports). Uncommitted: clean directly. Committed: ask before removing.
+  2. Update docs and artifacts affected by the change: README, `AGENTS.md`, API docs, `.cursor/rules/*.mdc`, startup scripts, `Dockerfile`, etc. **Always keep `.mdc` rules and `AGENTS.md` in sync with the latest codebase state.**
+     - **Model-facing** (AGENTS.md, API docs, cursor rules): keep accurate and concise; optimize for model consumption; output as skills when useful.
+     - **Human-facing** (README, Dockerfile, scripts): write for human readers.
+  3. When modifying user-facing text (UI copy, messages, labels), check if the project uses **i18n / multi-language files**. If so, update all relevant locale files together.
+
+# Code Style
+
+- Write all comments in English.
+- Class/function-level: describe purpose and contract. Inline: explain **why**, not what. (Bad: `Loop users` | Good: `Adults only per policy §4.2`)
+- **No end-of-line comments.** Place comments on a separate line above the relevant code.
+- Auto-format **only changed files** using the project's formatter. Fall back to sensible defaults if none configured.
+
+# Git
+
+- Use **Semantic Commit Messages**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `style:`, `perf:`, `ci:`. Subject ≤72 chars; add body for non-trivial changes.
+- When fixing or optimizing, **minimize the diff** — no unrelated reformatting, reordering, or renaming.
+
+# Project Config
+
+- **Python venv**: prefer repo-local (`.venv/`, `venv/`). Activate before running. Do not use system Python or recreate an existing venv.
+- **Environment variables**: use `.env` — never hard-code. Load via `python-dotenv`, `dotenv`, etc. Provide `.env.example`; ensure `.env` is in `.gitignore`.
+
+# New Project Scaffolding
+
+When creating a project from scratch: `git init` with initial commit; `.gitignore` for the stack (include `.env`); formatter config (`.prettierrc`, `pyproject.toml`, `.editorconfig`, etc.).
+
+# SQLAlchemy Session
+
+Avoid detached object errors: when SQLAlchemy objects leave the session context, accessing relationship attributes raises `Instance is not bound to a Session`.
+
+- **Serialize inside session**: Convert objects to dicts/serializable structures before leaving the session.
+- **Preload relationships**: Use `selectinload`/`joinedload` and access relationship attributes inside the session.
+- **Service layer returns dicts**: List queries should return lists of dicts, not ORM objects.
+- **API layer uses serializers**: Use serialization helpers when returning objects.
