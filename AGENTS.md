@@ -5,7 +5,7 @@
 ## Project
 
 - **Name**: ai-workshop
-- **Description**: AI workshop project
+- **Description**: Personal AI-related mini-projects, skills, plugins, and configurations
 - **Stack**: TBD
 
 ## Rules
@@ -18,6 +18,7 @@
 .
 ├── .cursor/rules/    # Cursor AI rules
 ├── AGENTS.md         # This file (model-facing)
+├── README.md         # Human-facing readme
 ├── LICENSE
 └── .gitignore
 ```
