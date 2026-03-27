@@ -32,9 +32,7 @@ def _is_noise(s: str) -> bool:
     ):
         return True
     # Skip alphanumeric IDs (e.g. mib1ppo8vr24wi3wnx)
-    if s == "100%" or (
-        len(s) <= 25 and s.isalnum() and s.islower() and not any(c in s for c in " ")
-    ):
+    if s == "100%" or (len(s) <= 25 and s.isalnum() and s.islower()):
         return True
     if len(s) == 1 and s in "●•◦▪▫\u2022\u2023\u25e6":
         return True

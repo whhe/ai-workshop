@@ -7,9 +7,11 @@ Used for getting DingTalk document list, downloading documents and attachments.
 import re
 import json
 import asyncio
+import logging
 import httpx
 import random
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
+from urllib.parse import urlparse, urlencode
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://alidocs.dingtalk.com"
@@ -21,6 +23,7 @@ API_CREATE_EXPORT_JOB = f"{BASE_URL}/api/v2/files/createExportJob"
 API_QUERY_EXPORT_STATUS = f"{BASE_URL}/api/v2/files/queryExportStatus"
 API_OPERATION_GUARD = f"{BASE_URL}/box/api/v1/dentry/operationGuard"
 API_RESOURCES_UPLOAD_INFO = f"{BASE_URL}/core/api/resources/9/upload_info"
+BX_VERSION = "2.5.36"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -34,6 +37,17 @@ RETRY_BACKOFF = 2
 # Pool connections like typical OpenAPI SDK clients (alibabacloud-style) to avoid
 # creating a new TCP/TLS stack per request.
 _HTTP_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=100)
+
+logger = logging.getLogger(__name__)
+
+
+def _http_error_detail(exc: httpx.HTTPStatusError) -> str:
+    """Best-effort response body snippet for HTTP error messages."""
+    try:
+        return (exc.response.text or "")[:2000]
+    except Exception:
+        return str(exc)
+
 
 DOWNLOADABLE_EXTENSIONS = {
     "pdf",
@@ -192,7 +206,9 @@ class DingTalkClient:
                 wait = RETRY_BACKOFF ** attempt
                 await asyncio.sleep(wait)
 
-        raise RuntimeError("Unreachable")
+        # All attempts returned 429; raise the final 429 as HTTPStatusError
+        response.raise_for_status()
+        return response
 
     def extract_node_id_from_url(self, url_or_node_id: str) -> str:
         """
@@ -404,6 +420,372 @@ class DingTalkClient:
         file_response.raise_for_status()
         return file_response.content
 
+    def _export_referer(self, doc_key: str, dentry_key: str, workspace_id: str) -> str:
+        """Referer for editor note/preview export chain (matches browser DevTools)."""
+        q = {
+            "dt_editor_toolbar": "true",
+            "biz_ver": "10",
+            "docId": doc_key,
+            "docType": "doc",
+            "dontjump": "true",
+            "utm_scene": "team_space",
+            "platform": "pc",
+            "mainsiteOrigin": "mainsite",
+            "showCommentPanel": "false",
+            "from": "dingnote",
+            "dd_user_keyboard": "false",
+            "dd_full_screen": "true",
+            "workspaceId": workspace_id,
+            "docKey": doc_key,
+            "dentryKey": dentry_key,
+            "utm_source": "portal",
+            "utm_medium": "portal_space_file_tree",
+            "channelId": "wiki-doc-iframe",
+            "disableGuide": "false",
+            "scene": "cloudSpace",
+        }
+        return f"{BASE_URL}/note/preview?{urlencode(q)}"
+
+    @staticmethod
+    def _export_referer_nodes(node_id: str) -> str:
+        """Alternate Referer when note/preview export is rejected (e.g. 52600007)."""
+        return f"{BASE_URL}/i/nodes/{node_id}"
+
+    def _require_doc_atoken(self) -> None:
+        if not self._doc_atoken:
+            raise DingTalkAuthError(
+                "Cookie missing doc_atoken; PDF export requires an authenticated alidocs session"
+            )
+
+    def _base_export_headers(self, referer: str) -> Dict[str, str]:
+        """Common headers shared by all export-chain endpoints."""
+        self._require_doc_atoken()
+        return {
+            "accept": "application/json, text/plain, */*",
+            "origin": BASE_URL,
+            "referer": referer,
+            "bx-v": BX_VERSION,
+            "a-token": self._doc_atoken,
+            "x-xsrf-token": self.xsrf_token or "",
+        }
+
+    def _operation_guard_headers(
+        self,
+        doc_key: str,
+        dentry_key: str,
+        workspace_id: str,
+    ) -> Dict[str, str]:
+        ref = self._export_referer(doc_key, dentry_key, workspace_id)
+        h = self._base_export_headers(ref)
+        if self._portal_corp_id:
+            h["corp-id"] = self._portal_corp_id
+        return h
+
+    def _upload_info_headers(
+        self,
+        doc_key: str,
+        dentry_key: str,
+        workspace_id: str,
+    ) -> Dict[str, str]:
+        ref = self._export_referer(doc_key, dentry_key, workspace_id)
+        h = self._base_export_headers(ref)
+        h["a-doc-key"] = doc_key
+        h["a-host-doc-key"] = ""
+        return h
+
+    def _export_doc_headers(
+        self,
+        dentry_key: str,
+        doc_key: str,
+        workspace_id: str,
+        referer: Optional[str] = None,
+    ) -> Dict[str, str]:
+        ref = referer if referer is not None else self._export_referer(
+            doc_key, dentry_key, workspace_id
+        )
+        h = self._base_export_headers(ref)
+        h["a-doc-key"] = doc_key
+        h["a-dentry-key"] = dentry_key
+        return h
+
+    def _pdf_export_options_string(
+        self,
+        doc_key: str,
+        doc_open_token: str,
+        nick: str,
+        title: str,
+        ctx_version: int,
+    ) -> str:
+        opts: Dict[str, Any] = {
+            "openToken": {
+                "docOpenToken": doc_open_token,
+                "corpId": self._portal_corp_id or "",
+                "docKey": doc_key,
+            },
+            "isNew": True,
+            "customConfig": {
+                "content": "ONLYCONTENT",
+                "mode": "PORTRAIT",
+                "watermark": "CLOSE",
+                "nick": nick,
+                "corpName": "",
+                "link": "",
+                "enableTableAutofitWidth": False,
+            },
+            "fileName": title,
+            "showDocTitle": True,
+            "ctxVersion": ctx_version,
+            "printStyle": {
+                "backgroundColor": "var(--we_bg_default_color, rgba(255, 255, 255, 1))",
+            },
+            "version": 1,
+            "appVersion": "4.98.9",
+            "exportType": "pdf",
+            "corpId": self._portal_corp_id or "",
+            "lang": "zh-CN",
+        }
+        return json.dumps(opts, ensure_ascii=False, separators=(",", ":"))
+
+    @staticmethod
+    def _strip_adoc_extension(name: str) -> str:
+        """Remove a trailing .adoc suffix (case-insensitive)."""
+        s = name.strip()
+        if s.lower().endswith(".adoc"):
+            return s[: -len(".adoc")]
+        return s
+
+    @staticmethod
+    def _checkpoint_ctx_version(checkpoint: Dict[str, Any]) -> int:
+        v = checkpoint.get("baseVersion", 0)
+        if v is None:
+            return 0
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _parse_upload_info_response(
+        payload: Dict[str, Any],
+    ) -> Tuple[str, str, Dict[str, str]]:
+        data = payload.get("data", payload)
+        if not isinstance(data, dict):
+            raise ValueError("upload_info: unexpected response shape")
+        storage_path = (
+            data.get("storagePath")
+            or data.get("storage_path")
+            or data.get("path")
+            or data.get("objectKey")
+            or ""
+        )
+        put_url = (
+            data.get("uploadUrl")
+            or data.get("upload_url")
+            or data.get("putUrl")
+            or data.get("externalUrl")
+            or ""
+        )
+        put_headers: Dict[str, str] = {}
+        sig = data.get("headerSignatureInfo") or data.get("headerSignature") or {}
+        if isinstance(sig, dict):
+            if not put_url:
+                urls = sig.get("resourceUrls") or sig.get("resource_urls") or []
+                if isinstance(urls, list) and urls:
+                    put_url = urls[0]
+            ph = sig.get("headers")
+            if isinstance(ph, dict):
+                put_headers = ph
+        if not put_url:
+            raise ValueError(f"upload_info: could not resolve upload URL: {payload}")
+        return str(storage_path), put_url, put_headers
+
+    @staticmethod
+    def _storage_path_from_put_url(put_url: str) -> str:
+        path = urlparse(put_url).path.lstrip("/")
+        if path.startswith("tmp_cp/"):
+            return path
+        idx = path.find("tmp_cp/")
+        if idx >= 0:
+            return path[idx:]
+        raise ValueError(f"Cannot extract storagePath from upload URL: {put_url[:120]}")
+
+    async def _operation_guard_download(
+        self,
+        node_id: str,
+        doc_key: str,
+        dentry_key: str,
+        workspace_id: str,
+    ) -> None:
+        h = self._operation_guard_headers(doc_key, dentry_key, workspace_id)
+        body = {
+            "operationType": "DOWNLOAD",
+            "resourceType": 0,
+            "resourceIdList": [node_id],
+        }
+        resp = await self._request(
+            "POST",
+            API_OPERATION_GUARD,
+            json_data=body,
+            headers={**h, "content-type": "application/json"},
+            timeout=60.0,
+            strip_accept_encoding=True,
+        )
+        result = resp.json()
+        if result.get("isSuccess") is False:
+            raise ValueError(f"operationGuard failed: {result}")
+
+    async def _upload_checkpoint_to_oss_and_storage_path(
+        self,
+        doc_key: str,
+        dentry_key: str,
+        workspace_id: str,
+        oss_put_bytes: bytes,
+    ) -> str:
+        body = {
+            "size": len(oss_put_bytes),
+            "resourceName": doc_key,
+            "contentType": "",
+        }
+        h = self._upload_info_headers(doc_key, dentry_key, workspace_id)
+        resp = await self._request(
+            "POST",
+            API_RESOURCES_UPLOAD_INFO,
+            json_data=body,
+            headers={**h, "content-type": "application/json"},
+            timeout=120.0,
+            strip_accept_encoding=True,
+        )
+        result = resp.json()
+        if result.get("isSuccess") is False:
+            raise ValueError(f"upload_info failed: {result}")
+        sp, put_url, put_headers = self._parse_upload_info_response(result)
+        req_headers = dict(put_headers) if put_headers else {}
+        client = await self._get_http()
+        r = await client.put(put_url, content=oss_put_bytes, headers=req_headers, timeout=120.0)
+        r.raise_for_status()
+        if not sp:
+            sp = self._storage_path_from_put_url(put_url)
+        return sp
+
+    @staticmethod
+    def _is_retryable_create_export_error(exc: Exception) -> bool:
+        if isinstance(exc, httpx.HTTPStatusError):
+            code = exc.response.status_code
+            if code == 400:
+                return True
+            if 500 <= code < 600:
+                return True
+            return False
+        err_s = str(exc)
+        if "52600007" in err_s:
+            return True
+        return False
+
+    async def _create_pdf_export_job_once(
+        self,
+        dentry_key: str,
+        doc_key: str,
+        workspace_id: str,
+        body: Dict[str, Any],
+        referer: Optional[str],
+    ) -> Dict[str, Any]:
+        h = self._export_doc_headers(dentry_key, doc_key, workspace_id, referer=referer)
+        response = await self._request(
+            "POST",
+            API_CREATE_EXPORT_JOB,
+            json_data=body,
+            headers={
+                **h,
+                "content-type": "application/json",
+                "source_doc_app": "doc",
+                "utm_medium": "portal_space_file_tree",
+                "utm_source": "portal",
+            },
+            timeout=120.0,
+            strip_accept_encoding=False,
+        )
+        result = response.json()
+        if not result.get("isSuccess"):
+            code = result.get("code") or result.get("errorCode")
+            msg = result.get("message", result)
+            raise ValueError(f"createExportJob failed: {msg} (code={code})")
+        data = result.get("data") or {}
+        job_id = data.get("jobId")
+        if not job_id:
+            raise ValueError(f"createExportJob missing jobId: {result}")
+        return {
+            "jobId": job_id,
+            "url": data.get("url") or "",
+            "done": bool(data.get("done")),
+        }
+
+    async def _create_pdf_export_job(
+        self,
+        dentry_key: str,
+        doc_key: str,
+        storage_path: str,
+        workspace_id: str,
+        node_id: str,
+    ) -> Dict[str, Any]:
+        strategies: List[Tuple[Dict[str, Any], Optional[str]]] = [
+            ({"scene": "normal", "storagePath": storage_path}, None),
+            (
+                {"scene": "normal", "storagePath": storage_path},
+                self._export_referer_nodes(node_id),
+            ),
+        ]
+        for i, (body, ref) in enumerate(strategies):
+            try:
+                return await self._create_pdf_export_job_once(
+                    dentry_key, doc_key, workspace_id, body, ref
+                )
+            except (ValueError, httpx.HTTPStatusError) as e:
+                if i < len(strategies) - 1 and self._is_retryable_create_export_error(e):
+                    logger.warning(
+                        "createExportJob attempt %s/%s failed, retrying with alternate referer: %s",
+                        i + 1,
+                        len(strategies),
+                        e,
+                    )
+                    continue
+                raise
+
+    async def _poll_pdf_export_job(
+        self,
+        job_id: str,
+        doc_key: str,
+        dentry_key: str,
+        workspace_id: str,
+        poll_interval: float,
+        max_wait: float,
+    ) -> Optional[str]:
+        params = {"jobId": job_id}
+        h = self._export_doc_headers(dentry_key, doc_key, workspace_id)
+        elapsed = 0.0
+        while elapsed < max_wait:
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+            try:
+                response = await self._request(
+                    "GET",
+                    API_QUERY_EXPORT_STATUS,
+                    params=params,
+                    headers=h,
+                    timeout=60.0,
+                    strip_accept_encoding=False,
+                )
+            except httpx.HTTPStatusError as e:
+                detail = _http_error_detail(e)
+                raise ValueError(
+                    f"queryExportStatus HTTP {e.response.status_code}: {detail or e}"
+                ) from e
+            payload = response.json()
+            data = payload.get("data") or {}
+            if data.get("done"):
+                url = data.get("url")
+                return str(url) if url else None
+        raise TimeoutError(f"PDF export polling timed out after {max_wait}s")
+
     async def export_to_pdf(
         self,
         node_id: str,
@@ -414,6 +796,10 @@ class DingTalkClient:
         """
         Export native adoc document to PDF.
 
+        Mirrors the browser: operationGuard (DOWNLOAD) -> upload_info + OSS PUT
+        {{asl, optionsString}} -> createExportJob(scene=normal, storagePath) -> poll -> download.
+        The createExportJob body must use storagePath from upload_info, not dentryUuid/workspaceId.
+
         Args:
             node_id: Document node ID.
             filename: Output filename (optional).
@@ -423,142 +809,71 @@ class DingTalkClient:
         Returns:
             PDF content as bytes.
         """
-        # Step 1: Get document info
         info = await self.get_dentry_info(node_id)
-        data = info.get("data", {})
+        data = info.get("data", info)
+        if not isinstance(data, dict):
+            data = {}
         dentry_key = data.get("dentryKey")
         doc_key = data.get("docKey")
-        space_id = data.get("spaceId")
-        doc_name = filename or data.get("name", "document").replace(".adoc", "")
+        workspace_id = str(data.get("spaceId") or data.get("workspaceId") or "")
 
-        # Step 2: Get document data
+        if not dentry_key or not doc_key:
+            raise ValueError("Cannot resolve dentryKey/docKey for PDF export")
+        if not workspace_id:
+            raise ValueError("Cannot resolve spaceId for PDF export")
+
         doc_data = await self.get_document_data(node_id, dentry_key)
         doc_content = doc_data.get("data", {})
         checkpoint = doc_content.get("documentContent", {}).get("checkpoint", {})
-        access_token = doc_content.get("accessToken", "")
-        base_version = checkpoint.get("baseVersion", 0)
+        content_str = checkpoint.get("content")
+        if not isinstance(content_str, str):
+            raise ValueError("checkpoint.content must be a string for PDF export")
+        access_token = doc_content.get("accessToken") or self._doc_atoken
+        ctx_version = self._checkpoint_ctx_version(checkpoint)
         user_nick = doc_content.get("userInfo", {}).get("user", {}).get("nick", "")
 
-        # Step 3: Prepare export options
-        export_options = {
-            "openToken": {
-                "docOpenToken": access_token,
-                "corpId": self._portal_corp_id,
-                "docKey": doc_key,
-            },
-            "isNew": True,
-            "customConfig": {
-                "content": "ONLYCONTENT",
-                "mode": "PORTRAIT",
-                "watermark": "CLOSE",
-                "nick": user_nick,
-                "corpName": "",
-                "link": "",
-                "enableTableAutofitWidth": False,
-            },
-            "fileName": doc_name,
-            "showDocTitle": True,
-            "ctxVersion": base_version,
-            "printStyle": {"backgroundColor": "var(--we_bg_default_color, rgba(255, 255, 255, 1))"},
-            "version": 1,
-            "appVersion": "4.98.9",
-            "exportType": "pdf",
-            "corpId": self._portal_corp_id,
-            "lang": "zh-CN",
-        }
+        raw_title = filename or data.get("name", "document")
+        title = self._strip_adoc_extension(raw_title)
 
-        # Step 4: Operation guard (DOWNLOAD preamble)
-        guard_headers = self._get_headers({
-            "a-token": self._doc_atoken,
-            "corp-id": self._portal_corp_id,
-            "bx-v": "2.5.36",
-        })
-        await self._request(
-            "POST",
-            API_OPERATION_GUARD,
-            json_data={"operation": "DOWNLOAD", "dentryUuid": node_id},
-            headers=guard_headers,
+        options_string = self._pdf_export_options_string(
+            doc_key=doc_key,
+            doc_open_token=access_token,
+            nick=user_nick,
+            title=title,
+            ctx_version=ctx_version,
         )
+        oss_put_bytes = json.dumps(
+            {"asl": content_str, "optionsString": options_string},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
 
-        # Step 5: Get upload URL
-        upload_body = json.dumps({
-            "asl": checkpoint.get("content", ""),
-            "optionsString": json.dumps(export_options, separators=(",", ":")),
-        }, separators=(",", ":"))
-
-        upload_headers = self._get_headers({
-            "a-token": self._doc_atoken,
-            "a-doc-key": doc_key,
-            "a-host-doc-key": "",
-        })
-
-        upload_info = await self._request(
-            "POST",
-            API_RESOURCES_UPLOAD_INFO,
-            json_data={"size": len(upload_body.encode("utf-8"))},
-            headers=upload_headers,
-            strip_accept_encoding=True,
+        await self._operation_guard_download(node_id, doc_key, dentry_key, workspace_id)
+        storage_path = await self._upload_checkpoint_to_oss_and_storage_path(
+            doc_key, dentry_key, workspace_id, oss_put_bytes
         )
-        upload_url = upload_info.json().get("data", {}).get("uploadUrl")
-
-        # Step 6: Upload to OSS
-        client = await self._get_http()
-        put_response = await client.put(upload_url, content=upload_body, timeout=DEFAULT_TIMEOUT)
-        put_response.raise_for_status()
-
-        # Step 7: Create export job
-        export_headers = self._get_headers({
-            "a-token": self._doc_atoken,
-            "a-doc-key": doc_key,
-            "a-dentry-key": dentry_key,
-        })
-
-        export_response = await self._request(
-            "POST",
-            API_CREATE_EXPORT_JOB,
-            json_data={
-                "dentryUuid": node_id,
-                "workspaceId": space_id,
-                "docKey": doc_key,
-                "dentryKey": dentry_key,
-                "exportType": "pdf",
-            },
-            headers=export_headers,
-            strip_accept_encoding=True,
+        job = await self._create_pdf_export_job(
+            dentry_key=dentry_key,
+            doc_key=doc_key,
+            storage_path=storage_path,
+            workspace_id=workspace_id,
+            node_id=node_id,
         )
-        export_result = export_response.json()
-
-        if not export_result.get("isSuccess"):
-            raise ValueError(f"Export job creation failed: {export_result.get('message')}")
-
-        job_data = export_result.get("data", {})
-        job_id = job_data.get("jobId")
-        download_url = job_data.get("url")
-
-        # Step 8: Poll for completion
-        if not job_data.get("done"):
-            elapsed = 0.0
-            while elapsed < max_wait:
-                await asyncio.sleep(poll_interval)
-                elapsed += poll_interval
-
-                status_response = await self._request(
-                    "GET",
-                    API_QUERY_EXPORT_STATUS,
-                    params={"jobId": job_id},
-                    headers=export_headers,
-                )
-                status_result = status_response.json()
-                status_data = status_result.get("data", {})
-
-                if status_data.get("done"):
-                    download_url = status_data.get("url") or download_url
-                    break
-
+        download_url = job.get("url")
+        if not job.get("done"):
+            polled_url = await self._poll_pdf_export_job(
+                job_id=job["jobId"],
+                doc_key=doc_key,
+                dentry_key=dentry_key,
+                workspace_id=workspace_id,
+                poll_interval=poll_interval,
+                max_wait=max_wait,
+            )
+            download_url = polled_url or download_url
         if not download_url:
-            raise ValueError("No download URL from export job")
+            raise ValueError(f"createExportJob did not return a download URL: {job}")
 
         client = await self._get_http()
-        pdf_response = await client.get(download_url, timeout=DEFAULT_TIMEOUT)
+        pdf_response = await client.get(download_url, follow_redirects=True, timeout=120.0)
         pdf_response.raise_for_status()
         return pdf_response.content

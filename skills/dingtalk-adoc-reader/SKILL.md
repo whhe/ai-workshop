@@ -215,18 +215,20 @@ Download from the first URL in `preSignUrls`.
 
 ### 5. PDF Export for Native Docs
 
-Multi-step export flow for adoc documents:
+Multi-step export flow for adoc documents (matches browser HAR; identity is in headers, not only JSON):
 
 ```
 1. GET  /box/api/v2/dentry/info        → spaceId, dentryKey, docKey
 2. POST /api/document/data             → checkpoint, accessToken, baseVersion
-3. POST /box/api/v1/dentry/operationGuard → DOWNLOAD preamble
-4. POST /core/api/resources/9/upload_info → uploadUrl
-5. PUT  uploadUrl                       → upload checkpoint + export options
-6. POST /api/v2/files/createExportJob   → jobId, download URL
+3. POST /box/api/v1/dentry/operationGuard → body: operationType DOWNLOAD, resourceType 0, resourceIdList [nodeId]
+4. POST /core/api/resources/9/upload_info → size, resourceName (docKey), contentType ""; parse storagePath + uploadUrl
+5. PUT  uploadUrl                       → upload {"asl","optionsString"} (UTF-8 bytes; size in step 4 must match)
+6. POST /api/v2/files/createExportJob   → JSON: {"scene":"normal","storagePath":"<from step 4>"} only; headers a-token, a-doc-key, a-dentry-key, referer (note/preview), optional utm_* / source_doc_app
 7. GET  /api/v2/files/queryExportStatus → poll until done
 8. GET  download URL                    → PDF bytes
 ```
+
+If step 6 fails with certain errors (e.g. 52600007, 5xx), the client retries with an alternate `referer` (`/i/nodes/{id}`). Sending `dentryUuid`/`workspaceId` in the createExportJob body (legacy) causes server errors.
 
 Export options format:
 
@@ -293,7 +295,16 @@ The extractor:
 | HTTP 404 | Document not found | Check node_id validity |
 | Export timeout | Large document | Increase `max_wait` parameter |
 
-Retry strategy: 3 attempts with exponential backoff (2^attempt seconds).
+### Retry Boundary
+
+The client has **two layers** of retry, with different responsibilities:
+
+| Layer | Scope | Built-in? | What it does |
+|-------|-------|-----------|-------------|
+| `_request` (transport) | All HTTP calls | Yes | Retries on HTTP 429 and transient network errors (3 attempts, exponential backoff). HTTP 4xx/5xx (other than 429) and auth errors propagate immediately. |
+| `createExportJob` Referer fallback | PDF export step 6 only | Yes | If the server rejects the `note/preview` Referer (e.g. error 52600007, HTTP 400/5xx), retries once with an alternate Referer (`/i/nodes/{id}`). This is a **DingTalk-specific protocol workaround**, not a generic retry. |
+
+**Callers are responsible for** any additional retry/back-off policies (e.g. retrying a full `export_to_pdf` call on transient failures, circuit-breaking across multiple documents, etc.). The client does not wrap these higher-level strategies.
 
 ## Usage Examples
 
