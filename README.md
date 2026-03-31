@@ -6,6 +6,8 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 - **`skills/`** — Reusable [Agent Skills](https://skills.sh/) for AI coding assistants
 - **`.cursor/rules/`** — Cursor AI coding rules and project conventions
+  - `project-conventions.mdc` — Workflow, code style, git, config, and ORM patterns
+  - `code-analysis-doc.mdc` — Writing standards for code analysis documents
 
 ## Skills
 

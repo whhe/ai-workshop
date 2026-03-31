@@ -12,6 +12,7 @@
 ## Rules
 
 - Project conventions: `.cursor/rules/project-conventions.mdc` (always applied)
+- Code analysis doc standards: `.cursor/rules/code-analysis-doc.mdc` (always applied)
 
 ## Skills (skills.sh)
 
