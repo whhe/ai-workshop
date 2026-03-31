@@ -244,6 +244,54 @@ class DingTalkClient:
             raise ValueError(f"Cannot extract space_id from URL: {space_url}")
         return space_url
 
+    def resolve_external_link(self, node_info: Dict[str, Any]) -> Optional[str]:
+        """
+        Resolve a dlink/hlink node to its target node_id.
+
+        Inspects the ``hyperlinkInfo.url`` field returned by ``get_dentry_info``.
+        If the target URL points to alidocs.dingtalk.com, extracts and returns
+        the target node_id so the caller can treat it as a regular node.
+        Returns None for non-alidocs URLs (external sites, other platforms).
+
+        Args:
+            node_info: Response dict from ``get_dentry_info``.
+
+        Returns:
+            Target node_id if the link is an alidocs URL, None otherwise.
+        """
+        data = node_info.get("data", node_info)
+        if not isinstance(data, dict):
+            return None
+        ext = (data.get("extension") or "").lower()
+        if ext not in ("dlink", "hlink"):
+            return None
+        hyperlink = data.get("hyperlinkInfo")
+        if not isinstance(hyperlink, dict):
+            logger.info(
+                "hyperlinkInfo not available for %s node %s (title=%s), skipping",
+                ext,
+                data.get("dentryUuid"),
+                data.get("name"),
+            )
+            return None
+        target_url = hyperlink.get("url") or ""
+        if not target_url.startswith(BASE_URL):
+            logger.info(
+                "Skipping external link: %s (title=%s)",
+                target_url,
+                data.get("name"),
+            )
+            return None
+        match = re.search(r"/i/nodes/([^?/]+)", target_url)
+        if match:
+            return match.group(1)
+        logger.info(
+            "Cannot extract node_id from alidocs link: %s (title=%s)",
+            target_url,
+            data.get("name"),
+        )
+        return None
+
     async def get_dentry_children(self, dentry_uuid: str) -> List[Dict[str, Any]]:
         """
         Get children list of a directory or space (supports pagination).
@@ -416,7 +464,9 @@ class DingTalkClient:
             raise ValueError("No download URL available")
 
         client = await self._get_http()
-        file_response = await client.get(pre_sign_urls[0], timeout=DEFAULT_TIMEOUT)
+        file_response = await client.get(
+            pre_sign_urls[0], follow_redirects=True, timeout=120.0
+        )
         file_response.raise_for_status()
         return file_response.content
 

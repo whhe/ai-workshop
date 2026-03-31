@@ -267,7 +267,33 @@ Export options format:
 | `png`, `jpg`, `jpeg` | Image | Binary download |
 | `folder` | Directory | List children (not downloadable) |
 
-Unsupported: `dlink`, `hlink` (shortcuts), table documents.
+### External Links (`dlink` / `hlink`)
+
+These are shortcut nodes whose target URL lives in `hyperlinkInfo.url` (returned by `get_dentry_info`). Use `resolve_external_link(node_info)` to handle them:
+
+- **alidocs URL** → returns the target `node_id`; treat as a regular node for subsequent operations.
+- **Non-alidocs URL** → returns `None` and logs the skipped URL; caller should skip the node.
+- **`hyperlinkInfo` missing** → returns `None` with an info log; caller should skip.
+
+Identification: check `extension` field (`dlink` / `hlink`) or `name` suffix (`.dlink` / `.link`).
+
+```python
+info = await client.get_dentry_info(child["dentryUuid"])
+ext = child.get("extension", "")
+name = child.get("name", "")
+is_link = ext in ("dlink", "hlink") or name.endswith((".dlink", ".link"))
+
+if is_link:
+    target_node_id = client.resolve_external_link(info)
+    if target_node_id is not None:
+        # alidocs link — treat target_node_id as a regular node
+        ...
+    else:
+        # external or unresolvable link — already logged, skip
+        continue
+```
+
+Unsupported: table documents.
 
 ## Text Extraction from Alidocs
 
@@ -365,20 +391,33 @@ async with DingTalkClient(cookie) as client:
 ### Download Document
 
 ```python
-from dingtalk_adoc_reader.client import DingTalkClient
+from dingtalk_adoc_reader.client import DingTalkClient, DOWNLOADABLE_EXTENSIONS
 
 async with DingTalkClient(cookie) as client:
     node_id = "xyz789"
     info = await client.get_dentry_info(node_id)
     data = info["data"]
-    ext = data["extension"]
+    ext = data.get("extension", "")
     name = data["name"]
+
+    # Resolve external links first
+    target = client.resolve_external_link(info)
+    if target is not None:
+        info = await client.get_dentry_info(target)
+        data = info["data"]
+        ext = data.get("extension", "")
+        name = data["name"]
+        node_id = target
+    elif ext in ("dlink", "hlink"):
+        print(f"Skipped external link: {name}")
+    else:
+        pass  # regular node, proceed
 
     if ext == "adoc":
         content = await client.export_to_pdf(node_id)
         with open(f"{name}.pdf", "wb") as f:
             f.write(content)
-    else:
+    elif ext in DOWNLOADABLE_EXTENSIONS:
         content = await client.download_file(node_id)
         with open(name, "wb") as f:
             f.write(content)

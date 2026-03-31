@@ -2,22 +2,26 @@
 DingTalk document transformer - extracts text from alidocs format.
 """
 
+import re
 from typing import Any, List
+
+_RE_UUID_STANDARD = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
+)
+_RE_HEX_ID = re.compile(r"^[0-9a-f]{20,}$", re.I)
+_RE_PERCENT = re.compile(r"^\d+%$")
 
 
 def _is_noise(s: str) -> bool:
-    """Skip UUIDs, type names, style values, bullets, IDs."""
+    """Skip UUIDs, type names, style values, bullets, IDs, and numeric strings."""
     s = s.strip()
     if len(s) < 3:
         return True
-    if (
-        s.startswith("00000000-")
-        or s.startswith("application/")
-        or s.startswith("rgb(")
-        or s.startswith("dingdoc")
-    ):
+    if _RE_UUID_STANDARD.match(s) or _RE_HEX_ID.match(s):
         return True
-    if s.startswith("rgba(") or (s.startswith("#") and len(s) <= 9):
+    if s.startswith("application/") or s.startswith("dingdoc"):
+        return True
+    if s.startswith("rgb(") or s.startswith("rgba(") or (s.startswith("#") and len(s) <= 9):
         return True
     if s in (
         "paragraph",
@@ -29,10 +33,15 @@ def _is_noise(s: str) -> bool:
         "solid",
         "table",
         "single",
+        "hetu",
     ):
         return True
-    # Skip alphanumeric IDs (e.g. mib1ppo8vr24wi3wnx)
-    if s == "100%" or (len(s) <= 25 and s.isalnum() and s.islower()):
+    if _RE_PERCENT.match(s):
+        return True
+    if s.isdigit():
+        return True
+    # Skip short lowercase alphanumeric strings (likely internal IDs)
+    if len(s) <= 25 and s.isalnum() and s.islower():
         return True
     if len(s) == 1 and s in "●•◦▪▫\u2022\u2023\u25e6":
         return True
