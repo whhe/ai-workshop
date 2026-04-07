@@ -1,0 +1,52 @@
+---
+description: Skill discovery and loading discipline — scan before acting, load on demand
+alwaysApply: true
+---
+
+# Skill Usage
+
+## Scan → Match → Load
+
+1. **Scan** (every task): read the `<available_skills>` descriptions already in context. Zero cost.
+2. **Match**: identify 0–3 skills whose trigger conditions fit the current task.
+3. **Load**: `Read` only the matched SKILL.md files. Never bulk-load all skills.
+
+## Trigger tiers
+
+| Tier | When to load | Examples |
+|------|-------------|----------|
+| **Keyword** | URL or keyword matches a skill trigger | 内网 URL → `intranet-reader`; code review → `code-review` |
+| **Task type** | Task category maps to a skill | create rule → `create-rule`; find skill → `find-skills` |
+| **Situational** | A runtime condition emerges | Installing unknown skill → `skill-vetter`; editing settings → `update-cursor-settings` |
+
+## Priority
+
+When multiple skills match:
+
+1. **Process skills first** (debugging, review) — determine HOW to approach the task.
+2. **Implementation skills second** (domain-specific) — guide execution.
+
+## Exemptions
+
+Skip the skill check for **trivial tasks**: single-line edits, direct factual questions, simple shell commands, or tasks clearly outside any skill's scope.
+
+## Anti-rationalization
+
+These thoughts mean STOP — you're skipping a skill you should load:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions can be tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+
+## Discipline
+
+- When loading a skill, briefly state: "Using **[skill]** for [purpose]."
+- Always read the **latest file**; never rely on a previous conversation's memory of a skill.
+- **Rigid skills** (TDD, debugging): follow exactly. **Flexible skills** (patterns): adapt to context.
+- **User instructions override skill instructions** when they conflict.
+- Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip skill workflows.

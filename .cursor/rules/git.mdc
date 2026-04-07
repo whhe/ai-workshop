@@ -1,5 +1,5 @@
 ---
-description: Git rules — branching, no unsolicited operations, commit format
+description: Git rules — branching, no unsolicited operations, stash, rebase, commit format
 alwaysApply: true
 ---
 
@@ -27,6 +27,17 @@ Unless the user **clearly asks**, do **not** decide on your own to:
 - `git push` (unless they explicitly ask to push or "commit and push")
 
 If they ask to "submit code" / "commit", a **local** `commit` is OK; still **no push** unless they explicitly ask.
+
+## Stash
+
+- Before switching branches with uncommitted changes, use `git stash` to save work. Remind the user to `git stash pop` after switching back.
+- Do not run `git stash drop` unless the user explicitly asks.
+
+## Rebase vs Merge
+
+- Prefer **rebase** for syncing feature branches with upstream (`git rebase main`), keeping a linear history.
+- Before rebasing, confirm with the user if the branch has been pushed to remote (rebase rewrites history).
+- Use **merge** only for integrating completed feature branches into the default branch.
 
 ## Commit message format
 

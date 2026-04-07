@@ -1,0 +1,50 @@
+---
+description: Coding conventions & style — comments, formatting, diff hygiene, type safety, error handling, async, testing
+alwaysApply: true
+---
+
+# Coding Conventions
+
+## Style & Formatting
+
+- Write all **code comments** in English. (Conversational responses follow the user's language preference.)
+- Class/function-level: describe purpose and contract. Inline: explain **why**, not what. (Bad: `Loop users` | Good: `Adults only per policy §4.2`)
+- **No end-of-line comments.** Place comments on a separate line above the relevant code.
+- Auto-format **only changed files** using the project's formatter. Fall back to sensible defaults if none configured.
+- When fixing or optimizing, **minimize the diff** — no unrelated reformatting, reordering, or renaming.
+- **End files with a newline** (POSIX standard).
+
+## General
+
+- Avoid hardcoded business values, magic numbers, environment addresses, and copy. Extract to constants, config, or a mapping layer.
+- Ensure naming, defaults, return values, and state semantics stay consistent with the existing codebase.
+- New logic should reuse existing abstractions rather than branching with ad-hoc if/else.
+- Errors, logs, and messages must be sufficient for debugging; never swallow exceptions or log misleading info.
+- New deps must be justified. Lock files and config changes must match actual code usage.
+
+## Python
+
+- Annotate all new/modified function signatures. Avoid bare `dict`, `list`, `Any` when a concrete type or `TypedDict` is viable.
+- Handle `None` explicitly; prefer `x is None` / `x is not None` over `== None`.
+- Catch the narrowest exception type. Never `except Exception` to silence errors. Do not mix data/auth/network errors into one handler.
+- Re-raise or wrap with context (`raise ... from e`) rather than swallowing.
+- Use `with` / `async with` for files, HTTP clients, DB connections, and locks.
+- Flag `verify=False`, unbounded retries, open-ended polling, and blocking `time.sleep` in async code as high-risk.
+- Never call blocking I/O inside `async def` — use `asyncio.to_thread` or an async-native library.
+- Verify `await` is not missing on coroutine calls. In event-loop frameworks (FastAPI, aiohttp), treat any synchronous network call as a bug.
+- Always use timezone-aware datetimes (`datetime.now(tz=UTC)`). Never mix naive and aware objects.
+- Watch for N+1 queries, repeated full-table scans, and redundant I/O inside loops. Prefer batch operations.
+- Serialize ORM objects to dicts/Pydantic models **inside** the session scope. Preload relationships with `selectinload` / `joinedload`.
+
+## TypeScript / JavaScript
+
+- Avoid excessive `any` and unsafe type assertions. New enums/config must stay consistent with consumer-side types.
+- All user-visible names, descriptions, error messages, and placeholders must go through i18n. No standalone hardcoded strings.
+- Data source forms, options, and mappings should follow the project's existing config patterns. No scattered hardcoding.
+- Verify `useEffect` / `useState` dependencies are correct. Avoid unnecessary re-renders and state drift.
+- Patches and polyfills should only activate under necessary conditions. Do not pollute globals or break other runtime versions.
+
+## Testing
+
+- Each new behavior needs at least one happy-path test and one failure/edge-case test. Name tests `test_<behavior>`.
+- Use fixtures for DB sessions, temp files, and mocks; avoid global mutable state.

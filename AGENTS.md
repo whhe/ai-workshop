@@ -11,14 +11,15 @@
 
 ## Rules
 
-All rules in `.cursor/rules/` are always applied unless otherwise specified:
+Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuque-mcp.mdc` which is system-only.
 
-- `workflow.mdc` — General workflow (clarification, post-task cleanup, doc sync)
-- `code-style.mdc` — Code style (comments, formatting, diff hygiene)
-- `git.mdc` — Git rules (branching, commit format, no unsolicited operations)
-- `project-config.mdc` — Project config (venv, env vars, scaffolding)
-- `sqlalchemy.mdc` — SQLAlchemy session handling (Python files only)
-- `code-analysis-doc.mdc` — Code analysis document standards
+| File | Always | Description |
+|------|--------|-------------|
+| `workflow.mdc` | yes | Workflow, clarification, post-task cleanup, doc sync, project config |
+| `git.mdc` | yes | Branching, no unsolicited ops, stash, rebase, semantic commit format |
+| `skill-usage.mdc` | yes | Skill discovery & loading discipline (scan → match → load) |
+| `coding.mdc` | yes | Coding conventions, style, type safety, error handling, testing |
+| `code-analysis-doc.mdc` | no | Code analysis document structure & pseudocode standards |
 
 ## Skills
 

@@ -1,6 +1,6 @@
 ---
 description: Writing standards for code analysis documents — structure, metadata table, API descriptions, and pseudocode conventions
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Code Analysis Document Standards
