@@ -1,0 +1,48 @@
+---
+description: Git rules — branching, no unsolicited operations, commit format
+alwaysApply: true
+---
+
+# Git
+
+## Branching
+
+- Prefer working on dedicated branches whose names start with **`feature-`** or **`fix-`**.
+
+### Before making code changes on a default branch
+
+When the **current branch** is a default branch (**`main`**, **`master`**, **`dev`**, or the repo's equivalent):
+
+1. **Ask** whether the user wants a new **`feature-...`** or **`fix-...`** branch before proceeding. Do not assume work should happen on the default branch.
+2. If the user agrees to create a branch, **before creating it**, check whether the **local default branch** matches its **remote tracking branch** (e.g. after `git fetch`, compare `main` and `origin/main`).
+3. If local is behind or diverges, **tell the user to pull/sync first** and why. Do **not** run `git pull` unless they explicitly ask.
+4. Create or switch branches only after **explicit** user agreement on the steps.
+
+## No unsolicited git operations
+
+Unless the user **clearly asks**, do **not** decide on your own to:
+
+- `git pull` or fetch/merge workflows (unless they explicitly ask to pull or sync)
+- `git commit` (unless they explicitly ask to commit or save a commit)
+- `git push` (unless they explicitly ask to push or "commit and push")
+
+If they ask to "submit code" / "commit", a **local** `commit` is OK; still **no push** unless they explicitly ask.
+
+## Commit message format
+
+Use **Semantic Commit Messages**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `style:`, `perf:`, `ci:`. Subject ≤72 chars; add body for non-trivial changes.
+
+First line: **`type(scope): title`** (e.g. `feat(permission): enterprise cutover with bug fixes`).
+
+Then group changes with `-` bullets by type:
+
+```
+feat(permission): enterprise cutover with bug fixes
+
+feat:
+- Integrate RBAC permission checks in API apps (canvas, chunk, document, kb, tenant)
+- Add permission manager UI and form fields for dataset settings
+
+fix:
+- Prevent negative doc_num/chunk_num/token_num in kb stats update
+```

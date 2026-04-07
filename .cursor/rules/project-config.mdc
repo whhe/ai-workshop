@@ -1,0 +1,13 @@
+---
+description: Project configuration — venv, env vars, and new project scaffolding
+alwaysApply: true
+---
+
+# Project Config
+
+- **Python venv**: prefer repo-local (`.venv/`, `venv/`). Activate before running. Do not use system Python or recreate an existing venv.
+- **Environment variables**: use `.env` — never hard-code. Load via `python-dotenv`, `dotenv`, etc. Provide `.env.example`; ensure `.env` is in `.gitignore`.
+
+# New Project Scaffolding
+
+When creating a project from scratch: `git init` with initial commit; `.gitignore` for the stack (include `.env`); formatter config (`.prettierrc`, `pyproject.toml`, `.editorconfig`, etc.).

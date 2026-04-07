@@ -1,0 +1,14 @@
+---
+description: General workflow — clarification, post-task cleanup, i18n, doc sync
+alwaysApply: true
+---
+
+# Workflow
+
+- When requirements or context are ambiguous, **ask for clarification** before proceeding. Do not guess.
+- After completing a task:
+  1. Review **only changed files** — clean up leftover code (temp scripts, debug logging, unused imports). Uncommitted: clean directly. Committed: ask before removing.
+  2. Update docs and artifacts affected by the change: README, `AGENTS.md`, API docs, `.cursor/rules/*.mdc`, startup scripts, `Dockerfile`, etc. **Always keep `.mdc` rules and `AGENTS.md` in sync with the latest codebase state.**
+     - **Model-facing** (AGENTS.md, API docs, cursor rules): keep accurate and concise; optimize for model consumption; output as skills when useful.
+     - **Human-facing** (README, Dockerfile, scripts): write for human readers.
+  3. When modifying user-facing text (UI copy, messages, labels), check if the project uses **i18n / multi-language files**. If so, update all relevant locale files together.

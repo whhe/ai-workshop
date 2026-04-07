@@ -4,10 +4,14 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 ## What's Inside
 
-- **`skills/`** — Reusable [Agent Skills](https://skills.sh/) for AI coding assistants
+- **`skills/`** — Reusable Agent Skills for AI coding assistants
 - **`.cursor/rules/`** — Cursor AI coding rules and project conventions
-  - `project-conventions.mdc` — Workflow, code style, git, config, and ORM patterns
-  - `code-analysis-doc.mdc` — Writing standards for code analysis documents
+  - `workflow.mdc` — General workflow (clarification, cleanup, doc sync)
+  - `code-style.mdc` — Code style (comments, formatting, diff hygiene)
+  - `git.mdc` — Git rules (branching, commit format, no unsolicited operations)
+  - `project-config.mdc` — Project config (venv, env vars, scaffolding)
+  - `sqlalchemy.mdc` — SQLAlchemy session handling
+  - `code-analysis-doc.mdc` — Code analysis document standards
 
 ## Skills
 
@@ -28,18 +32,6 @@ Install a specific skill:
 ```bash
 npx skills add whhe/ai-workshop --skill dingtalk-adoc-reader
 ```
-
-### Publish
-
-Skills are automatically listed on [skills.sh](https://skills.sh/) when users install them via `npx skills add`. No explicit publish step is needed — just push to GitHub and share the install command.
-
-To create a new skill:
-
-```bash
-npx skills init <skill-name>
-```
-
-Then move the generated folder into `skills/` and push.
 
 ## License
 

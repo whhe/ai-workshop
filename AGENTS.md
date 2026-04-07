@@ -11,14 +11,16 @@
 
 ## Rules
 
-- Project conventions: `.cursor/rules/project-conventions.mdc` (always applied)
-- Code analysis doc standards: `.cursor/rules/code-analysis-doc.mdc` (always applied)
+All rules in `.cursor/rules/` are always applied unless otherwise specified:
 
-## Skills (skills.sh)
+- `workflow.mdc` — General workflow (clarification, post-task cleanup, doc sync)
+- `code-style.mdc` — Code style (comments, formatting, diff hygiene)
+- `git.mdc` — Git rules (branching, commit format, no unsolicited operations)
+- `project-config.mdc` — Project config (venv, env vars, scaffolding)
+- `sqlalchemy.mdc` — SQLAlchemy session handling (Python files only)
+- `code-analysis-doc.mdc` — Code analysis document standards
 
-Skills are published to [skills.sh](https://skills.sh/) via GitHub. Install: `npx skills add whhe/ai-workshop`.
-
-Each skill lives in `skills/<name>/` with a required `SKILL.md` (YAML frontmatter: `name`, `description`). The `name` field **must** match the directory name (lowercase, hyphens only).
+## Skills
 
 | Skill | Path |
 |-------|------|
@@ -29,7 +31,7 @@ Each skill lives in `skills/<name>/` with a required `SKILL.md` (YAML frontmatte
 ```
 .
 ├── .cursor/rules/         # Cursor AI rules
-├── skills/                # Agent Skills (skills.sh)
+├── skills/                # Agent Skills
 │   └── dingtalk-adoc-reader/
 │       ├── SKILL.md       # Skill entry point
 │       └── dingtalk_adoc_reader/  # Python package
