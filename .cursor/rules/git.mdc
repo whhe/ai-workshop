@@ -1,6 +1,6 @@
 ---
-description: Git rules — branching, no unsolicited operations, stash, rebase, commit format
-alwaysApply: true
+description: Git rules — load before any git operation or code change on a branch. Covers branching, no unsolicited ops, stash, rebase, commit format.
+alwaysApply: false
 ---
 
 # Git

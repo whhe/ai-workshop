@@ -15,10 +15,10 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 
 | File | Always | Description |
 |------|--------|-------------|
-| `workflow.mdc` | yes | Workflow, clarification, post-task cleanup, doc sync, project config |
-| `git.mdc` | yes | Branching, no unsolicited ops, stash, rebase, semantic commit format |
+| `workflow.mdc` | yes | Think first, goal-driven execution, post-task cleanup, doc sync, project config |
+| `git.mdc` | no | Git rules — load before any git operation or code change on a branch |
 | `skill-usage.mdc` | yes | Skill discovery & loading discipline (scan → match → load) |
-| `coding.mdc` | yes | Coding conventions, style, type safety, error handling, testing |
+| `coding.mdc` | no | Coding conventions — load before creating or editing any source file |
 | `code-analysis-doc.mdc` | no | Code analysis document structure & pseudocode standards |
 
 ## Skills

@@ -1,23 +1,42 @@
 ---
-description: General workflow — clarification, post-task cleanup, i18n, doc sync, project config
+description: General workflow — think first, goal-driven execution, post-task cleanup, i18n, doc sync, project config
 alwaysApply: true
 ---
 
 # Workflow
 
-- When requirements or context are ambiguous, **ask for clarification** before proceeding. Do not guess.
-- After completing a task:
-  1. Review **only changed files** — clean up leftover code (temp scripts, debug logging, unused imports). Uncommitted: clean directly. Committed: ask before removing.
-  2. Update docs and artifacts affected by the change: README, `AGENTS.md`, API docs, `.cursor/rules/*.mdc`, startup scripts, `Dockerfile`, etc. **Always keep `.mdc` rules and `AGENTS.md` in sync with the latest codebase state.**
-     - **Model-facing** (AGENTS.md, API docs, cursor rules): keep accurate and concise; optimize for model consumption; output as skills when useful.
-     - **Human-facing** (README, Dockerfile, scripts): write for human readers.
-  3. When modifying user-facing text (UI copy, messages, labels), check if the project uses **i18n / multi-language files**. If so, update all relevant locale files together.
+## Think First
 
-# Project Config
+- When requirements or context are ambiguous, **ask for clarification** before proceeding. Do not guess.
+- **State assumptions explicitly.** If uncertain about any assumption, surface it before acting.
+- If multiple interpretations exist, **present them all** — don't pick silently.
+- If a simpler approach exists, **say so and push back** when warranted.
+
+## Goal-Driven Execution
+
+- Transform tasks into **verifiable goals** before implementing (e.g. "Add validation" → "Write tests for invalid inputs, then make them pass").
+- For multi-step tasks, state a brief plan with verification checks:
+  ```
+  1. [Step] → verify: [check]
+  2. [Step] → verify: [check]
+  ```
+- Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification — ask for better criteria.
+
+## Post-Task Cleanup
+
+After completing a task:
+
+1. **Review only changed files** — clean up residue **introduced by your changes**: temp scripts, debug logging, stale TODO comments. Uncommitted: clean directly. Committed: ask before removing. Pre-existing issues: mention, don't fix unless asked.
+2. Update docs and artifacts affected by the change: README, `AGENTS.md`, API docs, `.cursor/rules/*.mdc`, startup scripts, `Dockerfile`, etc. **Always keep `.mdc` rules and `AGENTS.md` in sync with the latest codebase state.**
+   - **Model-facing** (AGENTS.md, API docs, cursor rules): keep accurate and concise; optimize for model consumption; output as skills when useful.
+   - **Human-facing** (README, Dockerfile, scripts): write for human readers.
+3. When modifying user-facing text (UI copy, messages, labels), check if the project uses **i18n / multi-language files**. If so, update all relevant locale files together.
+
+## Project Config
 
 - **Python venv**: prefer repo-local (`.venv/`, `venv/`). Activate before running. Do not use system Python or recreate an existing venv.
 - **Environment variables**: use `.env` — never hard-code. Load via `python-dotenv`, `dotenv`, etc. Provide `.env.example`; ensure `.env` is in `.gitignore`.
 
-## New Project Scaffolding
+### New Project Scaffolding
 
 When creating a project from scratch: `git init` with initial commit; `.gitignore` for the stack (include `.env`); formatter config (`.prettierrc`, `pyproject.toml`, `.editorconfig`, etc.).

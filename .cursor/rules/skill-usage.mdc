@@ -28,7 +28,7 @@ When multiple skills match:
 
 ## Exemptions
 
-Skip the skill check for **trivial tasks**: single-line edits, direct factual questions, simple shell commands, or tasks clearly outside any skill's scope.
+Skip the skill check for **trivial tasks**: single-line edits, pure factual lookups (no action needed), simple shell commands, or tasks clearly outside any skill's scope.
 
 ## Anti-rationalization
 

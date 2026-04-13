@@ -1,20 +1,32 @@
 ---
-description: Coding conventions & style — comments, formatting, diff hygiene, type safety, error handling, async, testing
-alwaysApply: true
+description: Coding conventions for writing/modifying code — load before creating or editing any source file. Not needed for questions, analysis, or read-only tasks.
+alwaysApply: false
 ---
 
 # Coding Conventions
+
+## Simplicity First
+
+- **Minimum code that solves the problem.** No speculative features, abstractions for single-use code, or "flexibility" that wasn't requested.
+- No error handling for impossible scenarios. If 200 lines could be 50, rewrite.
+- Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## Surgical Changes
+
+- **Minimize the diff** — no unrelated reformatting, reordering, or renaming. Auto-format **only changed files**.
+- Don't "improve" adjacent code, comments, or formatting. Match existing style, even if you'd do it differently.
+- If you notice unrelated issues, **mention them — don't fix them** unless asked.
+- Remove imports/variables/functions that **your changes** made unused. Don't remove pre-existing dead code unless asked.
+- **Litmus test:** every changed line should trace directly to the user's request.
 
 ## Style & Formatting
 
 - Write all **code comments** in English. (Conversational responses follow the user's language preference.)
 - Class/function-level: describe purpose and contract. Inline: explain **why**, not what. (Bad: `Loop users` | Good: `Adults only per policy §4.2`)
 - **No end-of-line comments.** Place comments on a separate line above the relevant code.
-- Auto-format **only changed files** using the project's formatter. Fall back to sensible defaults if none configured.
-- When fixing or optimizing, **minimize the diff** — no unrelated reformatting, reordering, or renaming.
 - **End files with a newline** (POSIX standard).
 
-## General
+## Code Quality
 
 - Avoid hardcoded business values, magic numbers, environment addresses, and copy. Extract to constants, config, or a mapping layer.
 - Ensure naming, defaults, return values, and state semantics stay consistent with the existing codebase.
