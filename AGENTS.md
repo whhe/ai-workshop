@@ -15,11 +15,11 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 
 | File | Always | Description |
 |------|--------|-------------|
-| `workflow.mdc` | yes | Think first, goal-driven execution, post-task cleanup, doc sync, project config |
+| `code-analysis-doc.mdc` | no | Code analysis document structure & pseudocode standards |
+| `coding.mdc` | no | Coding conventions — load before creating or editing any source file |
 | `git.mdc` | no | Git rules — load before any git operation or code change on a branch |
 | `skill-usage.mdc` | yes | Skill discovery & loading discipline (scan → match → load) |
-| `coding.mdc` | no | Coding conventions — load before creating or editing any source file |
-| `code-analysis-doc.mdc` | no | Code analysis document structure & pseudocode standards |
+| `workflow.mdc` | yes | Think first, goal-driven execution, post-task cleanup, doc sync, project config |
 
 ## Skills
 
@@ -34,10 +34,10 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 ├── .cursor/rules/         # Cursor AI rules
 ├── skills/                # Agent Skills
 │   └── dingtalk-adoc-reader/
-│       ├── SKILL.md       # Skill entry point
-│       └── dingtalk_adoc_reader/  # Python package
+│       ├── dingtalk_adoc_reader/  # Python package
+│       └── SKILL.md       # Skill entry point
+├── .gitignore
 ├── AGENTS.md              # This file (model-facing)
-├── README.md              # Human-facing readme
 ├── LICENSE
-└── .gitignore
+└── README.md              # Human-facing readme
 ```
