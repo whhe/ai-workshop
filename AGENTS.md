@@ -26,19 +26,17 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 
 | Skill | Path |
 |-------|------|
-| dingtalk-adoc-reader | `skills/dingtalk-adoc-reader/` |
+| dingtalk-docs-reader | `skills/dingtalk-docs-reader/` |
 
 ## Structure
 
 ```
 .
-├── .cursor/rules/         # Cursor AI rules
-├── skills/                # Agent Skills
-│   └── dingtalk-adoc-reader/
-│       ├── dingtalk_adoc_reader/  # Python package
-│       └── SKILL.md       # Skill entry point
+├── .cursor/rules/           # Cursor AI rules
+├── skills/                  # Agent Skills
+│   └── dingtalk-docs-reader/
 ├── .gitignore
-├── AGENTS.md              # This file (model-facing)
+├── AGENTS.md                # This file (model-facing)
 ├── LICENSE
-└── README.md              # Human-facing readme
+└── README.md                # Human-facing readme
 ```

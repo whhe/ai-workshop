@@ -4,13 +4,16 @@ DingTalk document client.
 Used for getting DingTalk document list, downloading documents and attachments.
 """
 
+from __future__ import annotations
+
 import re
 import json
 import asyncio
 import logging
 import httpx
 import random
-from typing import List, Dict, Any, Optional, Tuple
+from types import TracebackType
+from typing import Any
 from urllib.parse import urlparse, urlencode
 from bs4 import BeautifulSoup
 
@@ -24,6 +27,8 @@ API_QUERY_EXPORT_STATUS = f"{BASE_URL}/api/v2/files/queryExportStatus"
 API_OPERATION_GUARD = f"{BASE_URL}/box/api/v1/dentry/operationGuard"
 API_RESOURCES_UPLOAD_INFO = f"{BASE_URL}/core/api/resources/9/upload_info"
 BX_VERSION = "2.5.36"
+APP_VERSION = "4.98.9"
+BIZ_VERSION = "10"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -31,8 +36,10 @@ USER_AGENT = (
     "Chrome/141.0.0.0 Safari/537.36"
 )
 DEFAULT_TIMEOUT = 30.0
+EXPORT_TIMEOUT = 120.0
 MAX_RETRIES = 3
 RETRY_BACKOFF = 2
+PAGE_SIZE = "100"
 
 # Pool connections like typical OpenAPI SDK clients (alibabacloud-style) to avoid
 # creating a new TCP/TLS stack per request.
@@ -45,7 +52,7 @@ def _http_error_detail(exc: httpx.HTTPStatusError) -> str:
     """Best-effort response body snippet for HTTP error messages."""
     try:
         return (exc.response.text or "")[:2000]
-    except Exception:
+    except (AttributeError, TypeError, UnicodeDecodeError):
         return str(exc)
 
 
@@ -74,45 +81,38 @@ COMMON_HEADERS = {
 }
 
 
-def _extract_xsrf_token(cookie: str) -> str:
-    """Extract XSRF-TOKEN from Cookie string."""
-    match = re.search(r"XSRF-TOKEN=([^;]+)", cookie)
-    return match.group(1) if match else ""
-
-
-def _extract_doc_atoken(cookie: str) -> str:
-    """Extract doc_atoken from Cookie (required for editor / export APIs)."""
-    match = re.search(r"doc_atoken=([^;]+)", cookie)
-    return match.group(1) if match else ""
-
-
-def _extract_portal_corp_id(cookie: str) -> str:
-    """Extract portal_corp_id from Cookie."""
-    match = re.search(r"portal_corp_id=([^;]+)", cookie)
+def _extract_cookie_value(cookie: str, name: str) -> str:
+    """Extract a named value from a Cookie header string."""
+    match = re.search(rf"{re.escape(name)}=([^;]+)", cookie)
     return match.group(1) if match else ""
 
 
 class DingTalkClient:
     """DingTalk document client."""
 
-    def __init__(self, cookie: str):
+    def __init__(self, cookie: str, *, verify_ssl: bool = True):
         """
         Initialize DingTalk client.
 
         Args:
             cookie: Full cookie string from authenticated browser session.
+            verify_ssl: Verify TLS certificates. Disable only for known-safe
+                        internal networks; a warning is logged when False.
         """
         self.cookie = cookie
-        self.xsrf_token = _extract_xsrf_token(cookie)
-        self._doc_atoken = _extract_doc_atoken(cookie)
-        self._portal_corp_id = _extract_portal_corp_id(cookie)
-        self._http: Optional[httpx.AsyncClient] = None
+        self.xsrf_token = _extract_cookie_value(cookie, "XSRF-TOKEN")
+        self._doc_atoken = _extract_cookie_value(cookie, "doc_atoken")
+        self._portal_corp_id = _extract_cookie_value(cookie, "portal_corp_id")
+        self._verify_ssl = verify_ssl
+        self._http: httpx.AsyncClient | None = None
+        if not verify_ssl:
+            logger.warning("SSL verification is disabled — vulnerable to MITM attacks")
 
     async def _get_http(self) -> httpx.AsyncClient:
         """Lazy shared AsyncClient for connection reuse across alidocs and follow-up HTTP calls."""
         if self._http is None:
             self._http = httpx.AsyncClient(
-                verify=False,
+                verify=self._verify_ssl,
                 timeout=httpx.Timeout(DEFAULT_TIMEOUT),
                 limits=_HTTP_LIMITS,
             )
@@ -128,26 +128,26 @@ class DingTalkClient:
         await self._get_http()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         await self.aclose()
 
-    def _get_headers(self, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        """Get request headers."""
+    def _get_headers(self, extra_headers: dict[str, str] | None = None) -> dict[str, str]:
         headers = {
             **COMMON_HEADERS,
             "cookie": self.cookie,
+            "X-XSRF-TOKEN": self.xsrf_token or "",
         }
-        extra_keys_lower = set()
-        if extra_headers:
-            extra_keys_lower = {k.lower() for k in extra_headers}
-        if self.xsrf_token and "x-xsrf-token" not in extra_keys_lower:
-            headers["X-XSRF-TOKEN"] = self.xsrf_token
         if extra_headers:
             headers.update(extra_headers)
         return headers
 
     @staticmethod
-    def _strip_accept_encoding(headers: Dict[str, str]) -> Dict[str, str]:
+    def _strip_accept_encoding(headers: dict[str, str]) -> dict[str, str]:
         """Remove Accept-Encoding header for certain APIs."""
         return {k: v for k, v in headers.items() if k.lower() != "accept-encoding"}
 
@@ -155,13 +155,17 @@ class DingTalkClient:
         self,
         method: str,
         url: str,
-        params: Optional[Dict] = None,
-        json_data: Optional[Dict] = None,
-        headers: Optional[Dict] = None,
+        params: dict[str, str] | None = None,
+        json_data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         strip_accept_encoding: bool = False,
     ) -> httpx.Response:
-        """HTTP request with retry."""
+        """Send an HTTP request with retry on 429 and transient network errors (up to MAX_RETRIES).
+
+        Auth redirects (301/302 to login.dingtalk.com) raise DingTalkAuthError immediately.
+        Other HTTP 4xx/5xx propagate without retry.
+        """
         merged_headers = self._get_headers(headers)
         if strip_accept_encoding:
             merged_headers = self._strip_accept_encoding(merged_headers)
@@ -200,7 +204,7 @@ class DingTalkClient:
 
             except (DingTalkAuthError, httpx.HTTPStatusError):
                 raise
-            except Exception:
+            except httpx.RequestError:
                 if attempt == MAX_RETRIES:
                     raise
                 wait = RETRY_BACKOFF ** attempt
@@ -244,7 +248,7 @@ class DingTalkClient:
             raise ValueError(f"Cannot extract space_id from URL: {space_url}")
         return space_url
 
-    def resolve_external_link(self, node_info: Dict[str, Any]) -> Optional[str]:
+    def resolve_external_link(self, node_info: dict[str, Any]) -> str | None:
         """
         Resolve a dlink/hlink node to its target node_id.
 
@@ -292,7 +296,7 @@ class DingTalkClient:
         )
         return None
 
-    async def get_dentry_children(self, dentry_uuid: str) -> List[Dict[str, Any]]:
+    async def get_dentry_children(self, dentry_uuid: str) -> list[dict[str, Any]]:
         """
         Get children list of a directory or space (supports pagination).
 
@@ -303,7 +307,7 @@ class DingTalkClient:
             List of child entries.
         """
         all_children = []
-        params = {"dentryUuid": dentry_uuid, "pageSize": "100"}
+        params = {"dentryUuid": dentry_uuid, "pageSize": PAGE_SIZE}
 
         response = await self._request("GET", API_DENTRY_LIST, params=params)
         result = response.json()
@@ -320,7 +324,7 @@ class DingTalkClient:
         while has_more and load_more_id:
             more_params = {
                 "dentryUuid": dentry_uuid,
-                "pageSize": "100",
+                "pageSize": PAGE_SIZE,
                 "loadMoreId": load_more_id,
             }
             more_response = await self._request(
@@ -334,7 +338,7 @@ class DingTalkClient:
 
         return all_children
 
-    async def get_dentry_info(self, dentry_uuid: str) -> Dict[str, Any]:
+    async def get_dentry_info(self, dentry_uuid: str) -> dict[str, Any]:
         """
         Get detailed info of a single node.
 
@@ -361,19 +365,14 @@ class DingTalkClient:
         """
         url = f"{BASE_URL}/i/spaces/{space_id}"
 
-        headers = self._get_headers({
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
-        })
-
-        client = await self._get_http()
-        response = await client.get(
+        response = await self._request(
+            "GET",
             url,
-            headers=headers,
-            params={"rnd": random.random()},
-            follow_redirects=True,
-            timeout=DEFAULT_TIMEOUT,
+            params={"rnd": str(random.random())},
+            headers={
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+            },
         )
-        response.raise_for_status()
         html = response.text
 
         if "login.dingtalk.com" in html or "oauth2/auth" in html:
@@ -390,8 +389,8 @@ class DingTalkClient:
 
         try:
             mainsite_content = json.loads(script.string.strip())
-        except json.JSONDecodeError:
-            raise ValueError("Cannot parse page JSON data")
+        except json.JSONDecodeError as e:
+            raise ValueError("Cannot parse page JSON data") from e
 
         if "spaceRootDentry" in mainsite_content:
             data = mainsite_content["spaceRootDentry"].get("data", {})
@@ -399,7 +398,6 @@ class DingTalkClient:
             if dentry_uuid:
                 return dentry_uuid
 
-        # Try alternative path
         props = mainsite_content.get("props", {}).get("pageProps", {})
         space_root = props.get("spaceRootDentry", {}).get("data", {})
         if space_root.get("dentryUuid"):
@@ -407,7 +405,7 @@ class DingTalkClient:
 
         raise ValueError("Cannot find root dentry UUID")
 
-    async def get_document_data(self, node_id: str, dentry_key: Optional[str] = None) -> Dict[str, Any]:
+    async def get_document_data(self, node_id: str, dentry_key: str | None = None) -> dict[str, Any]:
         """
         Get document content data for native adoc documents.
 
@@ -436,16 +434,46 @@ class DingTalkClient:
         )
         return response.json()
 
-    async def download_file(self, node_id: str) -> bytes:
+    async def _download_bytes(self, url: str, timeout: float = EXPORT_TIMEOUT) -> bytes:
+        """Download binary content from *url* with transient-error retry."""
+        client = await self._get_http()
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                resp = await client.get(url, follow_redirects=True, timeout=timeout)
+                resp.raise_for_status()
+                return resp.content
+            except httpx.HTTPStatusError:
+                raise
+            except httpx.RequestError:
+                if attempt == MAX_RETRIES:
+                    raise
+                await asyncio.sleep(RETRY_BACKOFF ** attempt)
+        raise RuntimeError("unreachable: all retry paths exit via return or raise")
+
+    async def download_file(self, node_id: str, extension: str | None = None) -> bytes:
         """
         Download file content for downloadable types (pdf, docx, etc.).
 
         Args:
             node_id: Document node ID.
+            extension: Known file extension. When provided, skips the extra
+                       ``get_dentry_info`` call used for validation.
 
         Returns:
             File content as bytes.
+
+        Raises:
+            ValueError: If the node extension is not in DOWNLOADABLE_EXTENSIONS.
         """
+        if extension is None:
+            info = await self.get_dentry_info(node_id)
+            extension = info.get("data", {}).get("extension", "")
+        if extension and extension not in DOWNLOADABLE_EXTENSIONS:
+            raise ValueError(
+                f"Extension '{extension}' is not downloadable. "
+                f"Supported: {', '.join(sorted(DOWNLOADABLE_EXTENSIONS))}"
+            )
+
         response = await self._request(
             "GET", API_FILE_DOWNLOAD, params={"dentryUuid": node_id}
         )
@@ -463,18 +491,13 @@ class DingTalkClient:
         if not pre_sign_urls:
             raise ValueError("No download URL available")
 
-        client = await self._get_http()
-        file_response = await client.get(
-            pre_sign_urls[0], follow_redirects=True, timeout=120.0
-        )
-        file_response.raise_for_status()
-        return file_response.content
+        return await self._download_bytes(pre_sign_urls[0])
 
     def _export_referer(self, doc_key: str, dentry_key: str, workspace_id: str) -> str:
         """Referer for editor note/preview export chain (matches browser DevTools)."""
         q = {
             "dt_editor_toolbar": "true",
-            "biz_ver": "10",
+            "biz_ver": BIZ_VERSION,
             "docId": doc_key,
             "docType": "doc",
             "dontjump": "true",
@@ -507,7 +530,7 @@ class DingTalkClient:
                 "Cookie missing doc_atoken; PDF export requires an authenticated alidocs session"
             )
 
-    def _base_export_headers(self, referer: str) -> Dict[str, str]:
+    def _base_export_headers(self, referer: str) -> dict[str, str]:
         """Common headers shared by all export-chain endpoints."""
         self._require_doc_atoken()
         return {
@@ -516,7 +539,6 @@ class DingTalkClient:
             "referer": referer,
             "bx-v": BX_VERSION,
             "a-token": self._doc_atoken,
-            "x-xsrf-token": self.xsrf_token or "",
         }
 
     def _operation_guard_headers(
@@ -524,7 +546,7 @@ class DingTalkClient:
         doc_key: str,
         dentry_key: str,
         workspace_id: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         ref = self._export_referer(doc_key, dentry_key, workspace_id)
         h = self._base_export_headers(ref)
         if self._portal_corp_id:
@@ -536,7 +558,7 @@ class DingTalkClient:
         doc_key: str,
         dentry_key: str,
         workspace_id: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         ref = self._export_referer(doc_key, dentry_key, workspace_id)
         h = self._base_export_headers(ref)
         h["a-doc-key"] = doc_key
@@ -548,8 +570,8 @@ class DingTalkClient:
         dentry_key: str,
         doc_key: str,
         workspace_id: str,
-        referer: Optional[str] = None,
-    ) -> Dict[str, str]:
+        referer: str | None = None,
+    ) -> dict[str, str]:
         ref = referer if referer is not None else self._export_referer(
             doc_key, dentry_key, workspace_id
         )
@@ -566,7 +588,7 @@ class DingTalkClient:
         title: str,
         ctx_version: int,
     ) -> str:
-        opts: Dict[str, Any] = {
+        opts: dict[str, Any] = {
             "openToken": {
                 "docOpenToken": doc_open_token,
                 "corpId": self._portal_corp_id or "",
@@ -589,7 +611,7 @@ class DingTalkClient:
                 "backgroundColor": "var(--we_bg_default_color, rgba(255, 255, 255, 1))",
             },
             "version": 1,
-            "appVersion": "4.98.9",
+            "appVersion": APP_VERSION,
             "exportType": "pdf",
             "corpId": self._portal_corp_id or "",
             "lang": "zh-CN",
@@ -605,7 +627,7 @@ class DingTalkClient:
         return s
 
     @staticmethod
-    def _checkpoint_ctx_version(checkpoint: Dict[str, Any]) -> int:
+    def _checkpoint_ctx_version(checkpoint: dict[str, Any]) -> int:
         v = checkpoint.get("baseVersion", 0)
         if v is None:
             return 0
@@ -616,8 +638,8 @@ class DingTalkClient:
 
     @staticmethod
     def _parse_upload_info_response(
-        payload: Dict[str, Any],
-    ) -> Tuple[str, str, Dict[str, str]]:
+        payload: dict[str, Any],
+    ) -> tuple[str, str, dict[str, str]]:
         data = payload.get("data", payload)
         if not isinstance(data, dict):
             raise ValueError("upload_info: unexpected response shape")
@@ -635,7 +657,7 @@ class DingTalkClient:
             or data.get("externalUrl")
             or ""
         )
-        put_headers: Dict[str, str] = {}
+        put_headers: dict[str, str] = {}
         sig = data.get("headerSignatureInfo") or data.get("headerSignature") or {}
         if isinstance(sig, dict):
             if not put_url:
@@ -702,7 +724,7 @@ class DingTalkClient:
             API_RESOURCES_UPLOAD_INFO,
             json_data=body,
             headers={**h, "content-type": "application/json"},
-            timeout=120.0,
+            timeout=EXPORT_TIMEOUT,
             strip_accept_encoding=True,
         )
         result = resp.json()
@@ -711,7 +733,7 @@ class DingTalkClient:
         sp, put_url, put_headers = self._parse_upload_info_response(result)
         req_headers = dict(put_headers) if put_headers else {}
         client = await self._get_http()
-        r = await client.put(put_url, content=oss_put_bytes, headers=req_headers, timeout=120.0)
+        r = await client.put(put_url, content=oss_put_bytes, headers=req_headers, timeout=EXPORT_TIMEOUT)
         r.raise_for_status()
         if not sp:
             sp = self._storage_path_from_put_url(put_url)
@@ -736,9 +758,9 @@ class DingTalkClient:
         dentry_key: str,
         doc_key: str,
         workspace_id: str,
-        body: Dict[str, Any],
-        referer: Optional[str],
-    ) -> Dict[str, Any]:
+        body: dict[str, Any],
+        referer: str | None,
+    ) -> dict[str, Any]:
         h = self._export_doc_headers(dentry_key, doc_key, workspace_id, referer=referer)
         response = await self._request(
             "POST",
@@ -751,7 +773,7 @@ class DingTalkClient:
                 "utm_medium": "portal_space_file_tree",
                 "utm_source": "portal",
             },
-            timeout=120.0,
+            timeout=EXPORT_TIMEOUT,
             strip_accept_encoding=False,
         )
         result = response.json()
@@ -776,8 +798,8 @@ class DingTalkClient:
         storage_path: str,
         workspace_id: str,
         node_id: str,
-    ) -> Dict[str, Any]:
-        strategies: List[Tuple[Dict[str, Any], Optional[str]]] = [
+    ) -> dict[str, Any]:
+        strategies: list[tuple[dict[str, Any], str | None]] = [
             ({"scene": "normal", "storagePath": storage_path}, None),
             (
                 {"scene": "normal", "storagePath": storage_path},
@@ -808,13 +830,13 @@ class DingTalkClient:
         workspace_id: str,
         poll_interval: float,
         max_wait: float,
-    ) -> Optional[str]:
+    ) -> str | None:
         params = {"jobId": job_id}
         h = self._export_doc_headers(dentry_key, doc_key, workspace_id)
-        elapsed = 0.0
-        while elapsed < max_wait:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max_wait
+        while loop.time() < deadline:
             await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
             try:
                 response = await self._request(
                     "GET",
@@ -839,7 +861,7 @@ class DingTalkClient:
     async def export_to_pdf(
         self,
         node_id: str,
-        filename: Optional[str] = None,
+        filename: str | None = None,
         poll_interval: float = 2.0,
         max_wait: float = 120.0,
     ) -> bytes:
@@ -923,7 +945,4 @@ class DingTalkClient:
         if not download_url:
             raise ValueError(f"createExportJob did not return a download URL: {job}")
 
-        client = await self._get_http()
-        pdf_response = await client.get(download_url, follow_redirects=True, timeout=120.0)
-        pdf_response.raise_for_status()
-        return pdf_response.content
+        return await self._download_bytes(download_url)

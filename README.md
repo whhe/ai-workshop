@@ -11,7 +11,7 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 | Skill | Description |
 |-------|-------------|
-| [dingtalk-adoc-reader](./skills/dingtalk-adoc-reader/) | DingTalk native document (adoc) read-only access: list, download, extract text, export PDF. Cookie-based auth, no enterprise app approval needed. |
+| [dingtalk-docs-reader](./skills/dingtalk-docs-reader/) | DingTalk document read-only access: list, download, extract text, export PDF. Cookie-based auth, no enterprise app approval needed. Table documents (asheet) not supported. |
 
 ### Install
 
@@ -24,7 +24,7 @@ npx skills add whhe/ai-workshop
 Install a specific skill:
 
 ```bash
-npx skills add whhe/ai-workshop --skill dingtalk-adoc-reader
+npx skills add whhe/ai-workshop --skill dingtalk-docs-reader
 ```
 
 ## License

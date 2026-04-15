@@ -2,14 +2,18 @@
 DingTalk document transformer - extracts text from alidocs format.
 """
 
+from __future__ import annotations
+
 import re
-from typing import Any, List
+from typing import Any
 
 _RE_UUID_STANDARD = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 _RE_HEX_ID = re.compile(r"^[0-9a-f]{20,}$", re.I)
 _RE_PERCENT = re.compile(r"^\d+%$")
+
+MAX_RECURSION_DEPTH = 25
 
 
 def _is_noise(s: str) -> bool:
@@ -19,9 +23,9 @@ def _is_noise(s: str) -> bool:
         return True
     if _RE_UUID_STANDARD.match(s) or _RE_HEX_ID.match(s):
         return True
-    if s.startswith("application/") or s.startswith("dingdoc"):
+    if s.startswith(("application/", "dingdoc")):
         return True
-    if s.startswith("rgb(") or s.startswith("rgba(") or (s.startswith("#") and len(s) <= 9):
+    if s.startswith(("rgb(", "rgba(")) or (s.startswith("#") and len(s) <= 9):
         return True
     if s in (
         "paragraph",
@@ -48,7 +52,7 @@ def _is_noise(s: str) -> bool:
     return False
 
 
-def extract_text_from_alidocs(obj: Any, depth: int = 0) -> List[str]:
+def extract_text_from_alidocs(obj: Any, depth: int = 0) -> list[str]:
     """
     Recursively extract text from alidocs checkpoint (application/x-alidocs-package).
 
@@ -59,21 +63,28 @@ def extract_text_from_alidocs(obj: Any, depth: int = 0) -> List[str]:
     Returns:
         List of extracted text strings.
     """
-    if depth > 25:
+    if depth > MAX_RECURSION_DEPTH:
         return []
-    texts = []
+    texts: list[str] = []
     if isinstance(obj, dict):
-        if "text" in obj and isinstance(obj["text"], str) and obj["text"].strip():
-            texts.append(obj["text"].strip())
-        if "t" in obj and isinstance(obj["t"], str) and obj["t"].strip():
-            texts.append(obj["t"].strip())
-        for v in obj.values():
-            texts.extend(extract_text_from_alidocs(v, depth + 1))
+        # Keys whose values are already captured as explicit text fields;
+        # skip them during the generic obj.values() walk to avoid duplicates.
+        text_keys = set()
+        for key in ("text", "t"):
+            val = obj.get(key)
+            if isinstance(val, str):
+                stripped = val.strip()
+                if stripped:
+                    texts.append(stripped)
+                    text_keys.add(key)
+        for k, v in obj.items():
+            if k not in text_keys:
+                texts.extend(extract_text_from_alidocs(v, depth + 1))
     elif isinstance(obj, list):
         for v in obj:
             texts.extend(extract_text_from_alidocs(v, depth + 1))
-    elif isinstance(obj, str) and obj.strip() and not _is_noise(obj.strip()):
-        # Direct string in nested structure
-        if len(obj.strip()) > 2:
-            texts.append(obj.strip())
+    elif isinstance(obj, str):
+        s = obj.strip()
+        if len(s) > 2 and not _is_noise(s):
+            texts.append(s)
     return texts

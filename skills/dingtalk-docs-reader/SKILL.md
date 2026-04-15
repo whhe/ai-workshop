@@ -1,55 +1,31 @@
 ---
-name: dingtalk-adoc-reader
-description: >-
-  Read DingTalk native documents (adoc) via internal web APIs.
-  Cookie-based auth (browser session) — no Open Platform app or admin approval needed.
-  Supports: QR login automation, knowledge-base traversal, document text extraction,
-  file download, and PDF export.
-dependencies:
-  - httpx >= 0.24.0 (async HTTP client)
-  - beautifulsoup4 >= 4.12.0 (HTML parsing)
-  - playwright >= 1.40.0 (QR login automation, optional)
-capabilities:
-  - QR code login via Playwright for cookie authentication
-  - List documents in knowledge base recursively
-  - Download files (pdf, docx, xlsx, pptx, txt, md, images)
-  - Export native adoc documents to PDF
-  - Extract text content from native alidocs format
-limitations:
-  - Uses reverse-engineered internal APIs — no official stability guarantees
-  - Cookie-based auth expires periodically; re-login required
-  - Custom/branded DingTalk builds (Alibaba, Ant internal) may differ
-  - Table documents not supported
-  - Rate limiting may apply
+name: dingtalk-docs-reader
+description: "Read DingTalk documents (adoc, dlink/hlink, downloadable attachments) via cookie-based auth — no enterprise app or admin approval needed. Supports knowledge-base traversal, text extraction, file download, and PDF export. Table documents (asheet) not supported. Use when accessing DingTalk/alidocs with a browser cookie instead of the official SDK."
 ---
 
-# DingTalk Document (adoc) API Guide
+IRON LAW: Every API call requires a valid browser Cookie with X-XSRF-TOKEN. Auth failures return 301/302 redirects, not 401 — always check for redirects before parsing response JSON.
+
+# DingTalk Document API Guide
 
 Portal: <https://alidocs.dingtalk.com>
 
-Programmatic access to DingTalk native documents. No stable public OpenAPI exists for the read paths the web app uses for native docs. This skill mirrors the browser with **cookie-based** session auth and internal endpoints reverse-engineered from the web frontend.
+Programmatic read access to DingTalk native documents via **cookie-based** session auth and internal endpoints reverse-engineered from the web frontend. No stable public OpenAPI covers these paths.
+
+## Workflow
+
+1. ⛔ BLOCKING **Authenticate** → obtain cookie via manual extraction from browser → verify: `XSRF-TOKEN` present in cookie string
+2. ⚠️ REQUIRED **Create client** → `async with DingTalkClient(cookie) as client` → verify: no `DingTalkAuthError` on first call
+3. ⚠️ REQUIRED **Navigate** → extract space/node ID from URL → list children or get node info → verify: API returns `isSuccess: true`
+4. ⚠️ REQUIRED **Read/Download** → branch by extension:
+   - `adoc` → `get_document_data()` + `extract_text_from_alidocs()` for text; (conditional) `export_to_pdf()` if PDF output is needed
+   - (conditional) `dlink`/`hlink` → `resolve_external_link()` first, then treat target as regular node
+   - other → `download_file()` (validates extension against `DOWNLOADABLE_EXTENSIONS`)
+5. (conditional) **Cleanup** → client auto-closes via `async with`; manual `aclose()` if not using context manager
 
 ## Official SDK vs This Skill
 
-Alibaba ships Open Platform SDKs (`alibabacloud-dingtalk`, `dingtalk-sdk`) for **server APIs**: app credentials, `access_token`, messaging, org/contacts, calendar, etc. Those SDKs **do not** cover `alidocs.dingtalk.com` native-document reads — auth is app-based (not browser-cookie-based) and the adoc/knowledge-base endpoints are not exposed as stable public OpenAPIs.
-
-**When to use this skill** (cookie-based):
-
-- Individual developer or ad-hoc automation — no enterprise app registration or admin approval needed
-- Custom/branded DingTalk deployments where open APIs for documents may not exist
-- Read-only access that mirrors "what the user can open in the browser"
-
-**When to use the official SDK** (app-based):
-
-- You have a provisioned enterprise app with approved scopes
-- You need published, stable APIs (messaging, contacts, calendar, attendance, etc.)
-
-The `DingTalkClient` keeps a shared `httpx.AsyncClient` with connection pooling. Always use the async context manager or call `aclose()` explicitly:
-
-```python
-async with DingTalkClient(cookie) as client:
-    ...
-```
+- **Official DingTalk**: the SDK requires creating an enterprise app, which depends on org admin permissions. This skill only needs a browser cookie — no approval needed.
+- **Custom DingTalk deployments** (AliDing, AntDing, etc.): the SDK does not support document reads. This skill calls web APIs directly, unaffected by this limitation.
 
 ## Authentication
 
@@ -58,29 +34,13 @@ Every request requires:
 - `Cookie` header — full cookie string from an authenticated browser session
 - `X-XSRF-TOKEN` header — extracted from the `XSRF-TOKEN` value in the cookie
 
-### Method 1: QR Code Login (Automated)
+Auth failure signals: HTTP 301/302 redirect to `login.dingtalk.com`, response URL containing `oauth2/auth`, or missing `atoken`/`ssotoken` cookies.
 
-Uses Playwright to automate the browser login flow:
-
-1. Launch headless Chromium → navigate to `https://alidocs.dingtalk.com`
-2. Click login button → new tab opens to `login.dingtalk.com`
-3. Capture QR code image → user scans with DingTalk app
-4. Detect login completion (URL redirect + new auth cookies)
-5. Extract full cookie string from browser context
-
-Key cookies after login: `atoken`, `atknv2`, `nick`, `ssotoken`, `uid`, `XSRF-TOKEN`, `doc_atoken`.
-
-### Method 2: Manual Cookie Extraction
+### Manual Cookie Extraction
 
 1. Open `https://alidocs.dingtalk.com` in browser (logged in)
 2. DevTools → Network tab → find any request to `alidocs.dingtalk.com`
 3. Copy the full `Cookie` header value
-
-### Auth Failure Detection
-
-- HTTP 301/302 redirect to `login.dingtalk.com`
-- Response URL containing `oauth2/auth`
-- Missing auth cookies (`atoken`, `ssotoken`)
 
 ## URL Structure
 
@@ -100,20 +60,6 @@ client.extract_node_id_from_url("https://alidocs.dingtalk.com/i/nodes/xyz789")
 ```
 
 ## API Reference
-
-### Common Headers
-
-```python
-HEADERS = {
-    "Cookie": "<cookie-string>",
-    "X-XSRF-TOKEN": "<extracted-from-cookie>",
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-}
-```
-
-All requests disable redirect following (`follow_redirects=False`) to detect auth failures.
 
 ### 1. List Directory Children
 
@@ -136,14 +82,11 @@ Response:
     "children": [
       {
         "dentryUuid": "abc123",
-        "name": "Document Title",
+        "name": "Doc Title",
         "dentryType": "file",
         "extension": "adoc",
         "dentryKey": "key123",
-        "docKey": "doc456",
-        "hasChildren": false,
-        "createdTime": "2025-01-01T00:00:00Z",
-        "updatedTime": "2025-03-18T00:00:00Z"
+        "docKey": "doc456"
       }
     ],
     "hasMore": false,
@@ -300,7 +243,7 @@ Unsupported: table documents.
 Native adoc documents use `application/x-alidocs-package` format. Extract text by recursively walking the JSON tree:
 
 ```python
-from dingtalk_adoc_reader.transformer import extract_text_from_alidocs
+from transformer import extract_text_from_alidocs
 
 texts = extract_text_from_alidocs(alidocs_json)
 ```
@@ -316,59 +259,40 @@ The extractor:
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `DingTalkAuthError` | Cookie expired/invalid | Re-login via QR code |
+| `DingTalkAuthError` | Cookie expired/invalid | Re-extract cookie from browser |
 | HTTP 429 | Rate limited | Auto-retried with exponential backoff |
 | HTTP 404 | Document not found | Check node_id validity |
 | Export timeout | Large document | Increase `max_wait` parameter |
 
 ### Retry Boundary
 
-The client has **two layers** of retry, with different responsibilities:
+The client has **three layers** of retry, with different responsibilities:
 
 | Layer | Scope | Built-in? | What it does |
 |-------|-------|-----------|-------------|
-| `_request` (transport) | All HTTP calls | Yes | Retries on HTTP 429 and transient network errors (3 attempts, exponential backoff). HTTP 4xx/5xx (other than 429) and auth errors propagate immediately. |
+| `_request` (transport) | All API calls | Yes | Retries on HTTP 429 and transient network errors (`httpx.RequestError`, 3 attempts, exponential backoff). HTTP 4xx/5xx (other than 429) and auth errors propagate immediately. |
+| `_download_bytes` | Binary file downloads | Yes | Retries on transient network errors (3 attempts, exponential backoff). Used by `download_file` and `export_to_pdf` for the final download step. |
 | `createExportJob` Referer fallback | PDF export step 6 only | Yes | If the server rejects the `note/preview` Referer (e.g. error 52600007, HTTP 400/5xx), retries once with an alternate Referer (`/i/nodes/{id}`). This is a **DingTalk-specific protocol workaround**, not a generic retry. |
 
 **Callers are responsible for** any additional retry/back-off policies (e.g. retrying a full `export_to_pdf` call on transient failures, circuit-breaking across multiple documents, etc.). The client does not wrap these higher-level strategies.
 
 ## Usage Examples
 
-### QR Code Login
+Add the skill's `scripts/` directory to `sys.path` once before importing:
 
 ```python
-import asyncio
-from dingtalk_adoc_reader.auth import start_qr_login, get_session, LoginStatus
+import sys
+from pathlib import Path
 
-async def login():
-    session = await start_qr_login()
-
-    while session.status == LoginStatus.PENDING:
-        await asyncio.sleep(1)
-        session = get_session(session.session_id)
-
-    if session.status != LoginStatus.QR_READY:
-        raise RuntimeError(f"Login failed: {session.error}")
-
-    # session.qr_image_base64 contains the QR code image (base64-encoded PNG)
-    print("Scan the QR code with DingTalk app")
-
-    while session.status == LoginStatus.QR_READY:
-        await asyncio.sleep(2)
-        session = get_session(session.session_id)
-
-    if session.status == LoginStatus.SUCCESS:
-        return session.cookie
-    raise RuntimeError(f"Login failed: {session.error}")
-
-cookie = asyncio.run(login())
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 ```
 
 ### List Knowledge Base Documents
 
 ```python
-from dingtalk_adoc_reader.client import DingTalkClient
+from client import DingTalkClient
 
+# verify_ssl defaults to True; pass verify_ssl=False only for known-safe internal networks
 async with DingTalkClient(cookie) as client:
     space_id = client.extract_space_id_from_url(
         "https://alidocs.dingtalk.com/i/spaces/ABC123"
@@ -391,34 +315,22 @@ async with DingTalkClient(cookie) as client:
 ### Download Document
 
 ```python
-from dingtalk_adoc_reader.client import DingTalkClient, DOWNLOADABLE_EXTENSIONS
+from client import DingTalkClient
 
 async with DingTalkClient(cookie) as client:
     node_id = "xyz789"
     info = await client.get_dentry_info(node_id)
-    data = info["data"]
-    ext = data.get("extension", "")
-    name = data["name"]
-
-    # Resolve external links first
-    target = client.resolve_external_link(info)
-    if target is not None:
-        info = await client.get_dentry_info(target)
-        data = info["data"]
-        ext = data.get("extension", "")
-        name = data["name"]
-        node_id = target
-    elif ext in ("dlink", "hlink"):
-        print(f"Skipped external link: {name}")
-    else:
-        pass  # regular node, proceed
+    ext = info["data"].get("extension", "")
+    name = info["data"]["name"]
+    # For dlink/hlink nodes, resolve via client.resolve_external_link(info) first
 
     if ext == "adoc":
         content = await client.export_to_pdf(node_id)
         with open(f"{name}.pdf", "wb") as f:
             f.write(content)
-    elif ext in DOWNLOADABLE_EXTENSIONS:
-        content = await client.download_file(node_id)
+    else:
+        # Pass extension to skip redundant get_dentry_info inside download_file
+        content = await client.download_file(node_id, extension=ext)
         with open(name, "wb") as f:
             f.write(content)
 ```
@@ -427,8 +339,8 @@ async with DingTalkClient(cookie) as client:
 
 ```python
 import json
-from dingtalk_adoc_reader.client import DingTalkClient
-from dingtalk_adoc_reader.transformer import extract_text_from_alidocs
+from client import DingTalkClient
+from transformer import extract_text_from_alidocs
 
 async with DingTalkClient(cookie) as client:
     doc_data = await client.get_document_data(node_id)
@@ -438,3 +350,28 @@ async with DingTalkClient(cookie) as client:
     texts = extract_text_from_alidocs(alidocs_json)
     print("\n".join(texts))
 ```
+
+## Anti-Patterns
+
+- Do NOT call any API without a Cookie containing `XSRF-TOKEN` — the server returns 301/302 (not 401), and the model may misinterpret the redirect as a valid response.
+- Do NOT use `download_file()` for `adoc` documents — they have no binary file; use `export_to_pdf()` or `get_document_data()` + `extract_text_from_alidocs()`.
+- Do NOT skip `resolve_external_link()` for `dlink`/`hlink` nodes — downloading them directly yields metadata, not the target content.
+- Do NOT parse HTTP 301/302 responses as JSON — always check for auth-redirect first.
+- Do NOT pass `dentryUuid` or `workspaceId` in the `createExportJob` body — use `storagePath` from `upload_info` only; the legacy fields cause server errors.
+
+## File Reference
+
+Source code lives in `scripts/` — invoke via `import`, do not load into context unless debugging. Ensure the skill's `scripts/` directory is on `sys.path` before importing (see Usage Examples).
+
+| File | When to load |
+|------|-------------|
+| `scripts/client.py` | Debugging API failures or extending the client with new endpoints |
+| `scripts/transformer.py` | Debugging text extraction quality or adding new content-type support |
+
+## Pre-Delivery Checklist
+
+- [ ] Cookie string contains `XSRF-TOKEN` (otherwise all API calls fail silently)
+- [ ] `DingTalkAuthError` is caught and surfaced to user with re-login instructions
+- [ ] `dlink`/`hlink` nodes resolved via `resolve_external_link` before download attempts
+- [ ] `download_file` only called for supported extensions (enforced internally; `ValueError` on mismatch)
+- [ ] `export_to_pdf` timeout (`max_wait`) is set high enough for large documents (default 120s)
