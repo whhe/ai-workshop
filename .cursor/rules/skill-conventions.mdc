@@ -1,0 +1,107 @@
+---
+description: "Skill authoring conventions — load when creating, editing, or reviewing a SKILL.md file or skill directory."
+alwaysApply: false
+---
+
+# Skill Conventions
+
+Supplements the `create-skill` skill.
+
+## Frontmatter
+
+Only two keys: `name` and `description`. Plain quoted strings only (no block scalars `>-`, `|`, `|+`).
+
+```yaml
+# Good
+---
+name: my-skill
+description: "What it does and when to use it."
+---
+
+# Bad — block scalar, extra keys
+---
+name: my-skill
+description: >-
+  block scalar
+capabilities: [...]
+---
+```
+
+### Description
+
+`description` is the **sole input** for skill-trigger matching. It must convey what the skill does and the situations it applies to, enabling the model to match by **understanding user intent** — not by scanning for literal tokens.
+
+- Describe capability and problem space in natural sentences.
+- Include representative scenarios and action verbs so the model grasps the semantic scope.
+- Do NOT reduce the description to a bare keyword list or multilingual word dump — this encourages shallow token-matching instead of intent-based reasoning.
+
+```yaml
+# Good — capability + scope + scenarios as natural language
+description: "Risk-priority code review with test-fix-retest closed loop. Use when the user asks to review code changes, evaluate merge readiness, audit for security or performance risks, or identify regressions in a branch or PR."
+
+# Bad — keyword bag, no semantic context
+description: "code review, 代码审查, review, audit, check, PR, security"
+```
+
+## Core Constraint (Iron Law)
+
+Every skill MUST declare a core constraint immediately after the frontmatter, before any heading. It answers: **"What is the one mistake the model will most likely make with this skill?"**
+
+```markdown
+IRON LAW: Every finding MUST cite file, line range, and code evidence.
+
+# Code Review — Risk-Priority with Fix Loop
+...
+```
+
+## Structure
+
+Default to **SKILL.md only**. Expand to multi-file only when the skill needs executable scripts or domain knowledge too large for a single file.
+
+```
+skill-name/
+├── assets/         # Static files used in output (images, templates); never loaded into context
+├── references/     # Domain knowledge, loaded on demand; one nesting level max
+├── scripts/        # Executed, not loaded into context; flat files only, no sub-packages
+└── SKILL.md        # Required — workflow + instructions (≤ 500 lines)
+```
+
+**Constraints:**
+- Only these top-level entries plus an optional README are allowed. No other files or directories at root.
+- Do not create `scripts/`, `references/`, or `assets/` unless actually needed — SKILL.md-only is the default.
+- Overflow domain knowledge from SKILL.md into `references/`.
+- SKILL.md must include a load-timing table for each reference file:
+
+  | File | When to load |
+  |------|--------------|
+  | security-checklist.md | Pass C finding needs threat-model detail |
+
+## Workflow
+
+Complex skills should include a **trackable checklist** immediately after the Iron Law line:
+
+| Marker | Meaning |
+|--------|---------|
+| `⚠️ REQUIRED` | Must not be skipped |
+| `⛔ BLOCKING` | Prerequisite — blocks all subsequent steps |
+| `(conditional)` | Depends on earlier choices or runtime conditions |
+
+**Confirmation gates** — steps involving destructive operations (delete, overwrite) or high-cost generation must stop and ask the user before proceeding.
+
+## Writing
+
+- **Language.** English unless the user explicitly requests another language.
+- **Justify token cost.** Only add what the model does not already know. If a line doesn't improve output quality, consistency, or reliability — cut it.
+- **Imperative form.** "Analyze the input" not "You should analyze the input."
+- **Questions over directives.** "Can an unauthenticated user reach this path?" is more effective than "Check security."
+- **Anti-patterns.** List what the model should NOT do — the lazy defaults it would fall into without guidance.
+- **Pre-delivery checklist.** Complex skills should end with concrete, verifiable self-checks. Each item must be specific enough to verify by inspecting output ("no placeholder text remaining"), not vague ("ensure quality").
+
+## Portability
+
+- **No secrets or internal URLs** — no API keys, tokens, credentials, or org-internal hostnames.
+- **No machine-specific content** — no absolute paths (`/Users/...`, `C:\...`) or machine-specific env vars. Use placeholders.
+- **Platform-agnostic** — do not assume specific tools, MCP servers, or IDE features. Phrase conditionally if unavoidable ("if the Shell tool is available, ...").
+- **CommonMark only** — headings, lists, code blocks, tables, links. No HTML, embedded images, or diagram syntax.
+- **Self-contained** — each skill MUST be independently understandable. Do not rely on other skills, conversation history, or external state.
+- Within-directory file references are fine. All other references MUST be web URLs — no filesystem paths outside the skill directory. Never "see skill X step 3."
