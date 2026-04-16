@@ -9,9 +9,13 @@ alwaysApply: false
 
 - Prefer working on dedicated branches whose names start with **`feature-`** or **`fix-`**.
 
+### Owner repo exception
+
+If the remote `origin` URL starts with **`git@github.com:whhe`** or **`https://github.com/whhe`**, skip branch-name checks and work directly on the **current branch** — no need to ask about creating a new branch or switching.
+
 ### Before making code changes on a default branch
 
-When the **current branch** is a default branch (**`main`**, **`master`**, **`dev`**, or the repo's equivalent):
+For all **other** repositories, when the **current branch** is a default branch (**`main`**, **`master`**, **`dev`**, or the repo's equivalent):
 
 1. **Ask** whether the user wants a new **`feature-...`** or **`fix-...`** branch before proceeding. Do not assume work should happen on the default branch.
 2. If the user agrees to create a branch, **before creating it**, check whether the **local default branch** matches its **remote tracking branch** (e.g. after `git fetch`, compare `main` and `origin/main`).
