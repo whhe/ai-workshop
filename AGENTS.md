@@ -26,6 +26,7 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 
 | Skill | Path |
 |-------|------|
+| code-review | `skills/code-review/` |
 | dingtalk-docs-reader | `skills/dingtalk-docs-reader/` |
 
 ## Structure
@@ -34,6 +35,7 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 .
 ├── .cursor/rules/           # Cursor AI rules
 ├── skills/                  # Agent Skills
+│   ├── code-review/
 │   └── dingtalk-docs-reader/
 ├── .gitignore
 ├── AGENTS.md                # This file (model-facing)
