@@ -11,6 +11,7 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 | Skill | Description |
 |-------|-------------|
+| [code-analysis](./skills/code-analysis/) | Multi-pass source code analysis and feature deep-dive. Produces structured documents with architecture diagrams, flow traces, and precise coverage of trigger conditions, edge cases, and error paths. |
 | [code-review](./skills/code-review/) | Risk-priority code review with test-fix-retest closed loop. Covers behavioral regressions, SOLID/architecture, security, performance, dead code, and test coverage. |
 | [dingtalk-docs-reader](./skills/dingtalk-docs-reader/) | DingTalk document read-only access: list, download, extract text, export PDF. Cookie-based auth, no enterprise app approval needed. Table documents (asheet) not supported. |
 
@@ -25,6 +26,7 @@ npx skills add whhe/ai-workshop
 Install a specific skill:
 
 ```bash
+npx skills add whhe/ai-workshop --skill code-analysis
 npx skills add whhe/ai-workshop --skill code-review
 npx skills add whhe/ai-workshop --skill dingtalk-docs-reader
 ```

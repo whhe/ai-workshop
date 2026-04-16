@@ -9,13 +9,24 @@
 - **Stack**: Python (skills), Markdown (SKILL.md)
 - **GitHub**: `whhe/ai-workshop`
 
+## Structure
+
+```
+.
+├── .cursor/rules/           # Cursor AI rules
+├── skills/                  # Agent Skills
+├── .gitignore
+├── AGENTS.md                # This file (model-facing)
+├── LICENSE
+└── README.md                # Human-facing readme
+```
+
 ## Rules
 
 Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuque-mcp.mdc` which is system-only.
 
 | File | Always | Description |
 |------|--------|-------------|
-| `code-analysis-doc.mdc` | no | Code analysis document structure & pseudocode standards |
 | `coding.mdc` | no | Coding conventions — load before creating or editing any source file |
 | `git.mdc` | no | Git rules — load before any git operation or code change on a branch |
 | `skill-conventions.mdc` | no | Skill authoring conventions — load when creating or editing a SKILL.md |
@@ -26,19 +37,6 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 
 | Skill | Path |
 |-------|------|
+| code-analysis | `skills/code-analysis/` |
 | code-review | `skills/code-review/` |
 | dingtalk-docs-reader | `skills/dingtalk-docs-reader/` |
-
-## Structure
-
-```
-.
-├── .cursor/rules/           # Cursor AI rules
-├── skills/                  # Agent Skills
-│   ├── code-review/
-│   └── dingtalk-docs-reader/
-├── .gitignore
-├── AGENTS.md                # This file (model-facing)
-├── LICENSE
-└── README.md                # Human-facing readme
-```
