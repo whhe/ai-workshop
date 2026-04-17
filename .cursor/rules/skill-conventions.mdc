@@ -1,5 +1,6 @@
 ---
 description: "Skill authoring conventions — load when creating, editing, or reviewing a SKILL.md file or skill directory."
+globs: **/SKILL.md
 alwaysApply: false
 ---
 
