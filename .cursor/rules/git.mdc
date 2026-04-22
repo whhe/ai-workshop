@@ -11,7 +11,9 @@ alwaysApply: false
 
 ### Owner repo exception
 
-If the remote `origin` URL starts with **`git@github.com:whhe`** or **`https://github.com/whhe`**, skip branch-name checks and work directly on the **current branch** — no need to ask about creating a new branch or switching.
+If the remote `origin` URL starts with **`git@github.com:whhe`** or **`https://github.com/whhe`**, **and** there is no upstream remote (e.g. `base`, `upstream`) pointing to a different org, skip branch-name checks and work directly on the **current branch**.
+
+If an upstream remote exists (fork workflow), follow the standard branching rules — work on dedicated `feature-` / `fix-` branches.
 
 ### Before making code changes on a default branch
 
@@ -32,6 +34,17 @@ Unless the user **clearly asks**, do **not** decide on your own to:
 
 If they ask to "submit code" / "commit", a **local** `commit` is OK; still **no push** unless they explicitly ask.
 
+## Review before commit
+
+After making code changes, **always** show the diff to the user and wait for explicit confirmation before committing. The workflow is:
+
+1. Make edits and show the diff.
+2. Wait for user to confirm the changes.
+3. Only then `git commit`.
+4. Only `git push` if the user explicitly asks.
+
+"采纳" / "确认" on a proposed change means approval to **edit** — not to commit or push. Each step requires separate, explicit approval.
+
 ## Stash
 
 - Before switching branches with uncommitted changes, use `git stash` to save work. Remind the user to `git stash pop` after switching back.
@@ -42,6 +55,10 @@ If they ask to "submit code" / "commit", a **local** `commit` is OK; still **no 
 - Prefer **rebase** for syncing feature branches with upstream (`git rebase main`), keeping a linear history.
 - Before rebasing, confirm with the user if the branch has been pushed to remote (rebase rewrites history).
 - Use **merge** only for integrating completed feature branches into the default branch.
+
+## Issues and Pull Requests
+
+Before creating an issue or PR, **always** show the full content (title, labels, body) to the user and wait for explicit confirmation before executing the `gh` command.
 
 ## Commit message format
 
