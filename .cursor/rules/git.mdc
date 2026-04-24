@@ -1,5 +1,5 @@
 ---
-description: Git rules — load before any git operation or code change on a branch. Covers branching, no unsolicited ops, stash, rebase, commit format.
+description: Git — load only when the work involves git commit (incl. --amend) or git rebase (incl. --continue/--abort/--skip).
 alwaysApply: false
 ---
 
@@ -11,9 +11,24 @@ alwaysApply: false
 
 ### Owner repo exception
 
-If the remote `origin` URL starts with **`git@github.com:whhe`** or **`https://github.com/whhe`**, **and** there is no upstream remote (e.g. `base`, `upstream`) pointing to a different org, skip branch-name checks and work directly on the **current branch**.
+Skip branch-name checks and work directly on the **current branch** only when **all three conditions are met**:
 
-If an upstream remote exists (fork workflow), follow the standard branching rules — work on dedicated `feature-` / `fix-` branches.
+1. **Single remote**: The repository has exactly **one** remote (any name)
+2. **GitHub remote**: That remote's fetch URL points to GitHub (SSH or HTTPS URL)
+3. **Owner match**: The `owner` in `owner/repo` equals the current user's GitHub login
+
+**Verification steps**:
+- List remotes: `git remote -v` — confirm there is exactly one remote, then use its **fetch** URL
+- Parse owner from that URL (SSH: `git@github.com:owner/repo.git`, HTTPS: `https://github.com/owner/repo.git`)
+- Verify `gh` availability: `which gh`
+- Verify `gh` authentication: `gh auth status >/dev/null 2>&1`
+- Get current user: `gh api user --jq .login`
+
+**When to check**: Verify these conditions once at the start of a session or before the first code change, not before every operation.
+
+**Performance tip**: Cache the result of owner verification to avoid repeated API calls within the same session.
+
+**Fallback behavior**: If any check fails (e.g., `gh` not installed, not authenticated, network error, zero or multiple remotes, non-GitHub remote, owner mismatch), **always apply the default-branch rules below** — prefer creating a dedicated branch over direct commits.
 
 ### Before making code changes on a default branch
 
