@@ -40,3 +40,4 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 | code-analysis | `skills/code-analysis/` |
 | code-review | `skills/code-review/` |
 | dingtalk-docs-reader | `skills/dingtalk-docs-reader/` |
+| github-issue-pr-draft | `skills/github-issue-pr-draft/` |
