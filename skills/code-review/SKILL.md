@@ -83,6 +83,7 @@ Load [removal-plan.md](references/removal-plan.md) if candidates are found.
 - Missing tests for changed logic count as regression risk.
 - Bug-fix changes need a regression test reproducing the original failure.
 - Cross-module changes need integration-level coverage.
+- **Assertion discriminability**: verify fixtures and assertions can distinguish real behavior from bypass/no-op — including cases where filtered and unfiltered results would look the same under the data you used, or where one happy path cannot prove a branch ran. Strengthen with cardinality, identity or negative cases, or observable effects appropriate to the feature.
 
 Language-specific gotchas (non-obvious items the general passes may miss):
 
@@ -90,6 +91,7 @@ Language-specific gotchas (non-obvious items the general passes may miss):
 |----------|-------|-----------|------|
 | Python | Naive/aware `datetime` mixing | Naive and aware datetime objects compared, subtracted, or assigned to the same field without explicit conversion | A |
 | Python | ORM lazy-load on detached instance | An ORM relationship or deferred column is accessed after the session that loaded the object is closed | D |
+| Python | ORM dialect portability | Queries rely on engine-specific SQL or vendor-only functions, raw SQL fragments, or dialect-only types instead of APIs the ORM can translate for every backend the project supports. Confirm compilation or execution against each dialect/version in that supported set | A, D |
 | TS/React | `useEffect`/`useMemo`/`useCallback` dependency issues | A reactive dependency is missing, redundant, or is an unstable reference (new object/array/function created each render) | D |
 | JS/Node | Global patches/polyfills without guards | A monkey-patch or polyfill executes unconditionally — no environment check, feature detection, or scope isolation | A |
 

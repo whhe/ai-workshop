@@ -7,6 +7,7 @@
 - **SSRF**: User-controlled URLs reaching internal services without allowlist validation
 - **Path traversal**: User input in file paths without sanitization (`../` attacks)
 - **Prototype pollution**: Unsafe object merging in JavaScript (`Object.assign`, spread with user input)
+- **Validator sufficiency**: When input validation exists, confirm it matches the real contract — patterns that still admit malformed structure, allowlists that omit risky values, normalization that hides invalid input, or dispatch/fallback paths that coerce or mishandle null and unexpected types
 
 ## AuthN/AuthZ
 
