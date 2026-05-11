@@ -20,7 +20,7 @@ If no template exists, use the default template below.
 - **Body structure** (use template if present; otherwise default):
   - `## Summary` — 1–3 sentences. Use [linking keywords](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) inline (`Closes #N` / `Fixes #N` for full resolution; `Refs #N` / `See #N` for related context) — no separate `## Related` section.
   - `## Changes` — bulleted list of concrete changes.
-  - `## Motivation` — why the change is needed; link triggering issue/discussion inline if not in Summary.
+  - `## Motivation` — why the change is needed; link triggering issue/discussion inline if not in Summary. **Omit entirely** when the Summary already links to an issue via `Closes`/`Fixes` that covers the motivation — avoid repeating what the issue already says.
   - `## Breaking changes` — **required when applicable**. Describe impact, migration path, affected consumers. Mark `**BREAKING:**` prominently. Omit entirely if none.
 - **Commits-to-body consistency**: the body must cover every non-trivial commit; flag drift before confirming.
 
@@ -42,7 +42,8 @@ When creating a PR: `head → base`. Base selection order: use `main` if it exis
 
 ## Motivation
 
-<Why this change is needed. Link to the problem or user need inline if not already in Summary.>
+<Why this change is needed. Link to the problem or user need inline if not already in Summary.
+Omit this section when the Summary already links to an issue via Closes/Fixes that covers the motivation.>
 ```
 
 If — and only if — this PR contains a breaking change, append after `## Motivation`:
