@@ -6,6 +6,7 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 - **`.cursor/rules/`** — Cursor AI rules and project conventions
 - **`skills/`** — Reusable Agent Skills for AI coding assistants
+- **`scripts/`** — Shell utilities for managing skills locally
 
 ## Skills
 
@@ -32,6 +33,14 @@ npx skills add whhe/ai-workshop --skill code-review
 npx skills add whhe/ai-workshop --skill dingtalk-docs-reader
 npx skills add whhe/ai-workshop --skill github-issue-pr-draft
 ```
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `skill-path.sh` | Resolve a skill's absolute path by target (`repo \| claude \| cursor`) and name |
+| `sync-skill.sh` | Bidirectional sync between repo and claude/cursor: `pull` (external→repo) or `push` (repo→external) |
+| `lint-skill.sh` | Multi-round convention audit via Claude Code CLI — reads `skill-conventions.mdc`, fixes violations, loops until passing |
 
 ## License
 
