@@ -79,7 +79,7 @@ skill-name/
 
 ## Workflow
 
-Complex skills should include a **trackable checklist** immediately after the Iron Law line:
+Complex skills should include a **trackable checklist** near the top of the skill body — either directly after the Iron Law line, or as the first content under the skill's `## Workflow` heading (which itself follows the H1 title). Do not bury the checklist deeper in the file.
 
 | Marker | Meaning |
 |--------|---------|
