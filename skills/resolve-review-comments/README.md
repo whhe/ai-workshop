@@ -6,10 +6,12 @@ An Agent Skill for end-to-end resolution of unresolved review comments on a GitH
 
 - **Platform-agnostic** — works with GitHub and GitLab (cloud or self-hosted)
 - **Full triage gate** — classifies every comment before touching code; skips require written justification
-- **Self-review loop** — validates all changes as a whole before committing
-- **Clean commit discipline** — enforces Conventional Commits format; prohibits review metadata in commit messages and PR/MR body
+- **Self-review loop** — impact analysis + up to 3 review-fix iterations before committing
+- **Clean commit discipline** — enforces Conventional Commits format; prohibits review metadata and external file references in commit messages and PR/MR body
 - **Thread management** — marks implemented comments resolved; posts reply for skipped comments
-- **Skill-aware** — hints the agent to check for available skills at each step without hard-wiring dependencies
+- **Minimal change** — resolves exactly what comments request; no unrequested refactoring
+- **No review metadata** — outputs are understandable from diff + history alone; no reviewer names or thread IDs leak into commits or descriptions
+- **Skill-aware** — discovers available skills at start and delegates platform API, code modification, and review validation accordingly
 
 ## How It Works
 
@@ -17,7 +19,7 @@ An Agent Skill for end-to-end resolution of unresolved review comments on a GitH
 2. **Fetch** — retrieve all unresolved review threads with their thread IDs
 3. **Triage** — classify each comment as Implement / Skip / Clarify; gate blocks until confirmed
 4. **Implement** — apply minimal fixes in dependency order, respecting project conventions
-5. **Self-review** — review the full changeset for regressions and correctness
+5. **Self-review** — map blast radius (callers, dependents, importers), then review-fix loop (max 3 iterations)
 6. **Commit** — one or more Conventional Commits; no review metadata allowed
 7. **Push + mark resolved** — push, then resolve threads or reply with skip reasons
 8. **Update description** — refresh PR/MR title (Conventional Commits) and body (repo-only content)
