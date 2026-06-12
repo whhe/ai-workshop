@@ -54,6 +54,13 @@ Output the review directly in the conversation. If the user explicitly requests 
 ## Removal / Iteration Plan
 (if applicable — safe-to-remove items and deferred items)
 
+## Fix Loop Iterations
+(if Fix Loop was entered)
+
+| Iteration | Issue Addressed | Fix Applied | Verification Result | Re-review Outcome |
+|-----------|----------------|-------------|---------------------|-------------------|
+| 1 | Finding #N — brief title | What changed | ✅ Pass / ❌ Fail + reason | ✅ No new issues / ⚠️ New finding #N |
+
 ## Test & Verification Notes
 - Checks performed / not performed
 - Language-specific checks applied

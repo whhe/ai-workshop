@@ -6,7 +6,7 @@ An Agent Skill that performs risk-priority code review with an optional test-fix
 
 - **6-pass risk-priority audit** — behavioral regression, SOLID & architecture, security, performance, dead code removal, test coverage
 - **Evidence-based findings** — every issue cites file, line range, and code evidence
-- **Fix loop** — after review, optionally enters a test → fix → retest cycle (user confirms first)
+- **Fix loop** — after review, optionally enters a test → fix → retest cycle (auto when user explicitly requests fixing, otherwise user-confirmed)
 - **Language-specific checks** — Python datetime/ORM pitfalls, React hook dependency issues, JS polyfill risks
 - **Structured output** — severity-ranked report with clear pass/fail per category
 
@@ -17,7 +17,7 @@ The skill guides an AI coding agent through a structured review workflow:
 1. **Preflight** — collect branch state, commit history, and change scope
 2. **Audit (Passes A–F)** — walk through each risk category in priority order
 3. **Report** — present findings ranked by severity before any changes
-4. **Fix loop** — apply minimal fixes with verification (only after user approval)
+4. **Fix loop** — apply minimal fixes with verification (auto when user explicitly requests fixing, otherwise user-confirmed)
 5. **Self-check** — validate the report against quality criteria before publishing
 
 ## Install

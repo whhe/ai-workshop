@@ -12,7 +12,7 @@ IRON LAW: Every finding MUST cite file, line range, and code evidence. No eviden
 - [ ] Step 1: Preflight ⚠️ REQUIRED
 - [ ] Step 2: Risk-Priority Audit (Passes A–F) ⚠️ REQUIRED
 - [ ] Step 3: Present Findings ⚠️ REQUIRED
-- [ ] Step 4: Fix Loop (conditional — user confirms first)
+- [ ] Step 4: Fix Loop (conditional — scope set by Step 3)
 - [ ] Step 5: Pre-Publish Self-Check ⚠️ REQUIRED
 
 ### 1. Preflight — Establish Baseline ⚠️ REQUIRED
@@ -100,20 +100,27 @@ Language-specific gotchas (non-obvious items the general passes may miss):
 **Report first** — present findings before making any changes.
 Load [output-template.md](references/output-template.md) for document structure, severity levels, and evidence rules.
 
-After presenting, ask user how to proceed (fix all / fix High only / fix specific items / no changes). Do NOT implement changes until user confirms.
+After presenting:
+- If the user's original request **explicitly included fixing** (e.g., "review and fix", "fix everything", "review then fix all issues"): automatically proceed to Fix Loop for **all findings** — no confirmation needed. Override the default only if the user explicitly scoped the fix (e.g., "fix High only"). **Negative examples** — these do NOT count as fix requests: "review this fix", "review my bugfix branch", "check if this fix is correct" — here "fix" describes existing work, not an instruction to apply fixes.
+- Otherwise: ask user how to proceed (fix all / fix High only / fix specific items / no changes). Do NOT implement changes until user confirms.
 
 ### 4. Fix Loop (conditional)
 
-⛔ Enter only after user explicitly confirms which issues to fix. Fix only issues within review scope.
+⛔ Enter only after Step 3 determines the fix scope. Fix only issues within that scope.
 
 Each iteration:
 
-1. Run the smallest relevant verification (unit tests, integration tests, or linter).
+1. Run the smallest relevant verification to establish a pre-fix baseline.
 2. Apply the minimal fix (avoid introducing new behavior).
-3. Re-run the same verification immediately.
-4. Expand scope only if necessary.
+3. Re-run the same verification to confirm the fix.
+4. Re-review the **entire diff** — same scope as Step 1 Preflight (`<base>..HEAD` or all uncommitted changes, now including any fixes applied so far). Do NOT scope the review to only the latest patch; fixes can introduce regressions elsewhere in the change.
+   - **Preferred**: spawn a subagent for this review — clean context prevents anchoring bias from the fix you just applied.
+   - **Fallback** (subagents unavailable): explicitly set aside the fix context, re-read the full diff from scratch, and apply Passes A–F as if this were a first review; note that review quality may be reduced.
+5. Expand scope only if the re-review (step 4) surfaces new issues within the agreed fix scope. If out-of-scope findings are discovered, record them in the Fix Loop Iterations table and report to user at the end of the Fix Loop.
 
-Cap at **3 iterations**. If still unstable, stop and report the blocker.
+Cap at **3 iterations**. If still unstable or if in-scope findings remain after the final re-review, stop and report to user before proceeding.
+
+**Iteration tracking**: Record each iteration's findings and fixes. The final report must include a per-iteration summary (iteration number, issue addressed, fix applied, verification result, re-review outcome) so the user can trace the fix history (see [output-template.md](references/output-template.md) § Fix Loop Iterations).
 
 Test strategy (adapt per project):
 
