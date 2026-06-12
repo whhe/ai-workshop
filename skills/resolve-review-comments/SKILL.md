@@ -1,6 +1,6 @@
 ---
 name: resolve-review-comments
-description: "End-to-end resolution of unresolved review comments on a GitHub PR or GitLab MR: fetch open threads, triage, implement fixes following project conventions, self-review, commit, push, mark threads resolved, and update the PR/MR description. Use when given a PR or MR URL with review comments to address."
+description: "End-to-end resolution of unresolved review comments on a GitHub PR or GitLab MR: fetch open threads, triage, implement fixes following project conventions, review-fix loop (via skill or inline fallback), commit, push, mark threads resolved, and update the PR/MR description. Use when given a PR or MR URL with review comments to address."
 ---
 
 IRON LAW: Every unresolved comment must be explicitly handled — as **Implement**, as **Skip** (with written technical justification), or as **Clarify** (awaiting user input). Silent omission is forbidden.
@@ -9,32 +9,32 @@ IRON LAW: Every unresolved comment must be explicitly handled — as **Implement
 
 ## Workflow
 
-- [ ] 1. Preflight
+- [ ] 1. Preflight (incl. Skill Resolution)
 - [ ] 2. Fetch Unresolved Comments
 - [ ] 3. Triage ⛔ GATE — blocks all subsequent steps
 - [ ] 4. Implement Fixes
-- [ ] 5. Self-Review
+- [ ] 5. Review-Fix Loop (max 3 iterations)
 - [ ] 6. Commit
 - [ ] 7. Push & Mark Resolved
 - [ ] 8. Update PR/MR Description
 
 ## Global Rules
 
-- **Skill delegation**: At start, scan available skills for the categories below. Record matches; if none found for a category, execute directly.
+- **Skill delegation**: At start (Skill Resolution in Step 1), scan installed skills for the categories below. Per category: one match → lock; multiple matches → present to user, let user pick, lock; no match → lock to fallback. All subsequent steps use the locked resolution — do NOT re-scan during execution.
 
-  | Category | Use in steps |
-  |----------|-------------|
-  | Platform API (read/write PRs, comments, threads) | 2, 7 |
-  | Code modification / review feedback | 4 |
-  | Code review / change validation | 5 (Self-Review § 5b) |
-  | PR/MR description drafting | 8 |
+  | Category | Use in steps | Fallback |
+  |----------|-------------|----------|
+  | Platform API (read/write PRs, comments, threads) | 2, 7 | `gh` CLI / GitLab REST |
+  | Code review / change validation | 5 (Review-Fix Loop) | Built-in minimum checklist (§5 step 2 checks) |
+  | PR/MR description drafting | 8 | Repo template or `git diff/log` |
+  | Code modification | 4, 5 | N/A — always executed inline; never delegated |
 
 - **No review metadata in outputs**: Commit messages, PR/MR title/body must never contain reviewer names, comment/thread IDs, phrases like "per review feedback"/"as suggested by"/"address review", or references to files outside this repository. All outputs must be understandable from diff + commit history alone.
 - **Minimal change**: Resolve exactly what comments request. Do not refactor adjacent code unless the comment requires it.
 
 ---
 
-### 1. Preflight
+### 1. Preflight (incl. Skill Resolution)
 
 1. Detect platform: GitHub (`github.com`) or GitLab (self-hosted / `gitlab.com`).
 2. Extract: `owner/repo`, PR/MR number, head branch.
@@ -42,6 +42,8 @@ IRON LAW: Every unresolved comment must be explicitly handled — as **Implement
 4. Verify local branch matches PR/MR head with no uncommitted conflicts.
 
 Stop if local branch diverges from remote head.
+
+5. **Skill Resolution** — execute the delegation scan described in Global Rules. Lock every category before proceeding.
 
 ---
 
@@ -60,7 +62,7 @@ Stop if local branch diverges from remote head.
 
   Discussions with an empty `notes` array are system-generated placeholders — skip them.
 
-Record per thread: thread/discussion ID (GitHub: node `id` for `resolveReviewThread` mutation), file path + line, full comment text.
+Record per thread: thread/discussion ID (GitHub: node `id` for `resolveReviewThread` mutation — general issue comments fetched from `issues/{pr}/comments` have no such ID; mark them `reply_only`), file path + line, full comment text.
 
 Stop if zero unresolved threads.
 
@@ -98,28 +100,27 @@ Apply Implement items in dependency order. Per fix:
 
 ---
 
-### 5. Self-Review
+### 5. Review-Fix Loop (max 3 iterations)
 
-#### 5a. Impact Analysis (mandatory — not delegatable to a skill)
+Each iteration:
 
-Map blast radius of all changes:
-1. For every modified symbol: find all callers and consumers.
-2. For every changed interface/contract: find all implementers and call sites.
-3. For every modified file: check importing modules.
+1. **Impact Analysis** (mandatory — not delegatable to a skill) — map blast radius of all accumulated changes (from Step 4 and all previous iterations of this loop — do NOT scope to the latest fix only):
+   - For every modified symbol: find all callers and consumers.
+   - For every changed interface/contract: find all implementers and call sites.
+   - For every modified file: check importing modules.
+   This produces the **review scope** (changed files + affected dependents). If ripple is unexpectedly wide, report to user.
 
-This produces the **review scope** (changed files + affected dependents). If ripple is unexpectedly wide, report to user.
-
-#### 5b. Review-Fix Loop (max 3 iterations)
-
-1. Review full scope from 5a — changed files **and** all callers, dependents, and importers identified there. Prefer subagent (fresh context reduces confirmation bias). At minimum check:
-   - Do the changes break any caller, consumer, or dependent from 5a?
+2. **Review** — evaluate the full review scope (changed files **and** all callers, dependents, and importers from step 1) using the locked review skill.
+   If the locked skill is an external skill (not the fallback), strongly recommended to run it in a subagent with fresh context to avoid confirmation bias; if subagent is unavailable, proceed inline but note that review quality may be reduced.
+   At minimum check:
+   - Do the changes break any caller, consumer, or dependent?
    - Are there security or correctness issues in the modified code paths or related parts?
    - Are tests added or updated for changed behavior, including at integration points?
    - Are all fixes consistent with each other and with the rest of the codebase?
-2. If findings: fix all issues, re-run 5a, repeat.
-3. If clean: proceed to Step 6.
 
-If cap reached with remaining findings, report to user before continuing.
+3. **Verdict** — if findings: fix all issues, verify compilation + linting pass, return to Impact Analysis (step 1 of this loop). If clean: proceed to Step 6.
+
+If cap reached with remaining findings, report to user before proceeding to Step 6.
 
 ---
 
@@ -136,7 +137,7 @@ Commit message must comply with **No review metadata** (see Global Rules).
 
 Push branch, then per comment:
 
-- **Implemented → resolve thread.**
+- **Implemented → resolve thread** (for GitHub `reply_only` threads, post a reply with a link to the fixing commit instead — `IssueComment`s cannot be resolved via the mutation).
 - **Skipped → reply with technical reason, leave thread open** (reviewer must be able to respond).
 
 Resolve API:
@@ -149,11 +150,13 @@ On failure: record thread ID, continue processing remaining threads, report all 
 
 ### 8. Update PR/MR Description
 
-Priority chain (stop at first match):
+Update both **title** and **body**. Title must follow the project commit convention if found, otherwise Conventional Commits format — this applies regardless of which option below is used.
+
+Priority chain (stop at first match — governs body generation):
 
 1. **Skill available** (see Global Rules delegation table) → delegate.
 2. **Repo config exists** (`.github/pull_request_template.md`, `.gitlab/merge_request_templates/`, or equivalent) → follow its structure.
-3. **Neither** → generate from `git diff/log` against base branch, using Conventional Commits for title format.
+3. **Neither** → generate from `git diff/log` against base branch.
 
 Content: only repository-derivable information. Comply with **No review metadata** (Global Rules).
 
@@ -165,8 +168,8 @@ If no update needed, state why and skip.
 
 - [ ] Every unresolved comment has a decision: Implement, Skip (reason posted to thread), or Clarify (escalated to user).
 - [ ] All implemented fixes compile and pass linting.
-- [ ] Impact analysis (5a) identified all callers, consumers, and dependents of changed symbols.
-- [ ] Review-fix loop (5b) completed with zero findings, or unresolved issues reported to user.
+- [ ] Impact analysis (§5 step 1) identified all callers, consumers, and dependents of changed symbols.
+- [ ] Review-Fix Loop (§5) completed with zero findings, or unresolved issues reported to user.
 - [ ] Each commit message contains no review metadata and no references outside this repository.
 - [ ] Each skipped comment has a reply with a technical reason; thread is left open.
 - [ ] PR/MR title follows project commit convention (or Conventional Commits if none found).
