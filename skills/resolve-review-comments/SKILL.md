@@ -62,7 +62,7 @@ Stop if local branch diverges from remote head.
 
   Discussions with an empty `notes` array are system-generated placeholders — skip them.
 
-Record per thread: thread/discussion ID (GitHub: node `id` for `resolveReviewThread` mutation — general issue comments fetched from `issues/{pr}/comments` have no such ID; mark them `reply_only`), file path + line, full comment text.
+Record per thread: thread/discussion ID (GitHub: node `id` for `resolveReviewThread` mutation — general issue comments fetched from `issues/{pr}/comments` have no such ID; mark them `reply_only`), file path + line, full comment text. Store the ID **verbatim and in full** as returned by the API — never truncate or abbreviate for display, because the same variable is used in Step 7. If you abbreviate for display, use a separate variable.
 
 Stop if zero unresolved threads.
 
@@ -144,7 +144,13 @@ Resolve API:
 - GitHub: GraphQL `resolveReviewThread` mutation with thread node `id` from Step 2.
 - GitLab: `PUT /projects/{id}/merge_requests/{iid}/discussions/{discussion_id}` with `{ "resolved": true }`.
 
-On failure: record thread ID, continue processing remaining threads, report all failures at end.
+**Success check**:
+- GitHub GraphQL: HTTP 2xx alone is not enough — inspect the GraphQL response for an `errors` array and confirm the mutation returned the resolved thread data.
+- GitLab REST: use the HTTP status code (2xx = success), **not** JSON body parsing. Response bodies from GitLab often contain non-ASCII characters (CJK text, emoji) that break naive `json.load()` in shell pipelines, causing false failure reports. A parse error on a 200 response is not a failure — do not retry.
+
+**One call per thread/discussion**: Call the resolve API exactly once per thread/discussion ID. For GitLab, do not retry just because the response body failed to parse. Never fall back to a "short" or reconstructed ID if parsing fails — that would create a duplicate resolve event.
+
+On genuine failure (GitHub GraphQL `errors` / missing mutation data, or non-2xx status for either platform): record thread ID, continue processing remaining threads, report all failures at end.
 
 ---
 
