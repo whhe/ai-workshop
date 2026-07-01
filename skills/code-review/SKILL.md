@@ -113,9 +113,17 @@ Each iteration:
 1. Run the smallest relevant verification to establish a pre-fix baseline.
 2. Apply the minimal fix (avoid introducing new behavior).
 3. Re-run the same verification to confirm the fix.
-4. Re-review the **entire diff** — same scope as Step 1 Preflight (`<base>..HEAD` or all uncommitted changes, now including any fixes applied so far). Do NOT scope the review to only the latest patch; fixes can introduce regressions elsewhere in the change.
-   - **Preferred**: spawn a subagent for this review — clean context prevents anchoring bias from the fix you just applied.
-   - **Fallback** (subagents unavailable): explicitly set aside the fix context, re-read the full diff from scratch, and apply Passes A–F as if this were a first review; note that review quality may be reduced.
+4. **Adversarial re-review** of the **entire diff** — same scope as Step 1 Preflight (`<base>..HEAD` or all uncommitted changes, now including any fixes applied so far). Do NOT scope the review to only the latest patch; fixes can introduce regressions elsewhere in the change.
+
+   The re-review must be **adversarial**: its default stance is that the fix introduced new problems. The reviewer must actively try to refute the fix's correctness before accepting it. Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count as findings.
+
+   **Iteration equivalence**: every re-review — whether iteration 1 or 3 — must start from the same baseline context: project structure, conventions, and the current full diff. No prior re-review findings, fix rationale, or iteration history may carry forward. Only the diff content differs across iterations (it grows as fixes accumulate).
+
+   - **Preferred**: spawn a fresh subagent per iteration (iteration equivalence is automatic — each subagent starts with zero prior context). The prompt must:
+     1. Provide only the full diff and project context — no description of the fix intent or rationale.
+     2. Instruct: "Your job is to find problems in these changes. Default to 'this is wrong' and require evidence to accept. For each modified region, attempt to construct a realistic scenario where the code fails (e.g., edge cases, concurrency, null/empty inputs, type mismatches, caller breakage — adapt to what is relevant). Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count. Mark clean if you cannot construct such a scenario after trying."
+     3. Apply Passes A, C, D, F with the adversarial stance (skip B and E — re-review targets regressions, not architecture or cleanup).
+   - **Fallback** (subagents unavailable): to satisfy iteration equivalence, reset context before each re-review — discard all prior re-review findings, fix rationale, and iteration history, then re-read the full diff from scratch (`git diff` or `git diff <base>..HEAD`). Apply Passes A, C, D, F as if this were the first and only re-review (skip B and E — re-review targets regressions, not architecture or cleanup). Before each pass, ask: "How could the changes in this pass be wrong?" Quality degrades across iterations as accumulated context becomes harder to discard — prefer the subagent path when available.
 5. Expand scope only if the re-review (step 4) surfaces new issues within the agreed fix scope. If out-of-scope findings are discovered, record them in the Fix Loop Iterations table and report to user at the end of the Fix Loop.
 
 Cap at **3 iterations**. If still unstable or if in-scope findings remain after the final re-review, stop and report to user before proceeding.

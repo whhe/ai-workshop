@@ -110,8 +110,17 @@ Each iteration:
    - For every modified file: check importing modules.
    This produces the **review scope** (changed files + affected dependents). If ripple is unexpectedly wide, report to user.
 
-2. **Review** — evaluate the full review scope (changed files **and** all callers, dependents, and importers from step 1) using the locked review skill.
-   If the locked skill is an external skill (not the fallback), strongly recommended to run it in a subagent with fresh context to avoid confirmation bias; if subagent is unavailable, proceed inline but note that review quality may be reduced.
+2. **Adversarial Review** — evaluate the full review scope (changed files **and** all callers, dependents, and importers from step 1) using the locked review skill with an adversarial stance.
+
+   The review must default to "these fixes introduced new problems" and require evidence to accept. This counters confirmation bias — the natural tendency to validate fixes you know are intended to be correct. Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count as findings.
+
+   **Iteration equivalence**: every review iteration — whether iteration 1 or 3 — must start from the same baseline context: project structure, conventions, and the current full diff plus caller/dependent list. No prior review findings, fix rationale, or iteration history may carry forward. Only the diff content differs across iterations (it grows as fixes accumulate).
+
+   - **Preferred**: spawn a fresh subagent per iteration (iteration equivalence is automatic — each subagent starts with zero prior context). The prompt must:
+     1. Provide only the diff, affected files, and caller/dependent list from Impact Analysis — no description of the original review comments or fix rationale.
+     2. Instruct: "Your job is to find problems in these changes. Default to 'this is wrong' and require evidence to accept. For each modified region, attempt to construct a realistic scenario where the code fails (e.g., edge cases, concurrency, null/empty inputs, type mismatches, caller breakage — adapt to what is relevant). Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count. Mark clean if you cannot construct such a scenario after trying."
+     3. Apply the locked review skill's regression-relevant checklist with the adversarial stance (skip architecture and cleanup passes — re-review targets regressions, not architecture or cleanup).
+   - **Fallback** (subagents unavailable): to satisfy iteration equivalence, reset context before each review — discard all prior review findings, fix rationale, and iteration history, then re-read the full diff and caller/dependent list from scratch (`git diff` or `git diff <base>..HEAD`). Proceed inline with the locked review skill as if this were the first and only review, focusing on regression-relevant checks (skip architecture and cleanup passes — re-review targets regressions, not architecture or cleanup). Before each check, ask: "How could this fix be wrong?" Quality degrades across iterations as accumulated context becomes harder to discard — prefer the subagent path when available.
    At minimum check:
    - Do the changes break any caller, consumer, or dependent?
    - Are there security or correctness issues in the modified code paths or related parts?

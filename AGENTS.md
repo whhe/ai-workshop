@@ -33,6 +33,10 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 | `skill-usage.mdc` | yes | Skill discovery & loading discipline (scan → match → load) |
 | `workflow.mdc` | yes | Think first, goal-driven execution, post-task cleanup, doc sync, project config |
 
+## Skill Constraints
+
+- **Self-containment**: each skill MUST be independently usable in isolation. Skills MUST NOT reference, import, delegate to, or share content with other skills — no cross-skill file references, no shared reference files between skill directories. If two skills need identical instructions, duplicate the text in each; divergence from duplication is preferable to coupling.
+
 ## Skills
 
 | Skill | Path |
