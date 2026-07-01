@@ -104,7 +104,7 @@ Apply Implement items in dependency order. Per fix:
 
 Each iteration:
 
-1. **Impact Analysis** (mandatory — not delegatable to a skill) — map blast radius of all accumulated changes (from Step 4 and all previous iterations of this loop — do NOT scope to the latest fix only):
+1. **Impact Analysis** (mandatory — not delegable to a skill) — map blast radius of all accumulated changes (from Step 4 and all previous iterations of this loop — do NOT scope to the latest fix only):
    - For every modified symbol: find all callers and consumers.
    - For every changed interface/contract: find all implementers and call sites.
    - For every modified file: check importing modules.
@@ -121,7 +121,8 @@ Each iteration:
      2. Instruct: "Your job is to find problems in these changes. Default to 'this is wrong' and require evidence to accept. For each modified region, attempt to construct a realistic scenario where the code fails (e.g., edge cases, concurrency, null/empty inputs, type mismatches, caller breakage — adapt to what is relevant). Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count. Mark clean if you cannot construct such a scenario after trying."
      3. Apply the locked review skill's regression-relevant checklist with the adversarial stance (skip architecture and cleanup passes — re-review targets regressions, not architecture or cleanup).
    - **Fallback** (subagents unavailable): to satisfy iteration equivalence, reset context before each review — discard all prior review findings, fix rationale, and iteration history, then re-read the full diff and caller/dependent list from scratch (`git diff` or `git diff <base>..HEAD`). Proceed inline with the locked review skill as if this were the first and only review, focusing on regression-relevant checks (skip architecture and cleanup passes — re-review targets regressions, not architecture or cleanup). Before each check, ask: "How could this fix be wrong?" Quality degrades across iterations as accumulated context becomes harder to discard — prefer the subagent path when available.
-   At minimum check:
+
+   At minimum check (both paths):
    - Do the changes break any caller, consumer, or dependent?
    - Are there security or correctness issues in the modified code paths or related parts?
    - Are tests added or updated for changed behavior, including at integration points?

@@ -6,7 +6,7 @@ An Agent Skill for end-to-end resolution of unresolved review comments on a GitH
 
 - **Platform-agnostic** — works with GitHub and GitLab (cloud or self-hosted)
 - **Full triage gate** — classifies every comment before touching code; skips require written justification
-- **Review-Fix Loop** — per iteration: impact analysis, code review (via skill or inline fallback), and fix; max 3 iterations; remaining findings trigger a user checkpoint
+- **Adversarial Review-Fix Loop** — per iteration: impact analysis, code review (via skill or inline fallback), and fix; max 3 iterations; remaining findings trigger a user checkpoint
 - **Clean commit discipline** — enforces Conventional Commits format; prohibits review metadata and external file references in commit messages and PR/MR body
 - **Thread management** — marks implemented comments resolved; posts reply for skipped comments
 - **Minimal change** — resolves exactly what comments request; no unrequested refactoring
@@ -23,6 +23,20 @@ An Agent Skill for end-to-end resolution of unresolved review comments on a GitH
 6. **Commit** — one or more Conventional Commits; no review metadata allowed
 7. **Push + mark resolved** — push, then resolve threads or reply with skip reasons
 8. **Update description** — refresh PR/MR title (project convention or Conventional Commits) and body (repo-only content)
+
+## Prerequisites
+
+For GitHub PRs, authenticate the `gh` CLI:
+
+```bash
+gh auth login
+```
+
+For GitLab MRs, provide a Personal Access Token with `api` scope:
+
+```bash
+export GITLAB_TOKEN=your_personal_access_token
+```
 
 ## Install
 
