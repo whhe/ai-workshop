@@ -8,7 +8,7 @@ usage() {
   echo ""
   echo "  direction   pull  — copy from target into repo"
   echo "              push  — copy from repo into target"
-  echo "  target      claude | cursor"
+  echo "  target      claude | cursor | global"
   echo "  skill-name  skill directory name (no path prefix)"
   exit 1
 }
@@ -25,8 +25,8 @@ case "$DIRECTION" in
 esac
 
 case "$TARGET" in
-  claude|cursor) ;;
-  *) echo "Error: target must be 'claude' or 'cursor'." >&2; usage ;;
+  claude|cursor|global) ;;
+  *) echo "Error: target must be 'claude', 'cursor', or 'global'." >&2; usage ;;
 esac
 
 REPO_PATH="$("$SCRIPT_DIR/skill-path.sh" repo     "$SKILL")"

@@ -9,7 +9,7 @@ MAX_ROUNDS=5
 usage() {
   echo "Usage: $(basename "$0") <target> <skill-name>"
   echo ""
-  echo "  target      repo | claude | cursor"
+  echo "  target      repo | claude | cursor | global"
   echo "  skill-name  skill directory name (no path prefix)"
   exit 1
 }

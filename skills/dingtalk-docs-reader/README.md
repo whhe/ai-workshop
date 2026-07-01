@@ -19,7 +19,7 @@ Instead of the official DingTalk SDK (which requires an enterprise app and org a
 ## Install
 
 ```bash
-npx skills add whhe/ai-workshop --skill dingtalk-docs-reader
+npx skills add whhe/ai-workshop --skill dingtalk-docs-reader --global
 ```
 
 ## Prerequisites

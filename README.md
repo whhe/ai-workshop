@@ -23,25 +23,25 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 Install all skills:
 
 ```bash
-npx skills add whhe/ai-workshop
+npx skills add whhe/ai-workshop --global
 ```
 
 Install a specific skill:
 
 ```bash
-npx skills add whhe/ai-workshop --skill code-analysis
-npx skills add whhe/ai-workshop --skill code-review
-npx skills add whhe/ai-workshop --skill dingtalk-docs-reader
-npx skills add whhe/ai-workshop --skill github-issue-pr-draft
-npx skills add whhe/ai-workshop --skill resolve-review-comments
+npx skills add whhe/ai-workshop --skill code-analysis --global
+npx skills add whhe/ai-workshop --skill code-review --global
+npx skills add whhe/ai-workshop --skill dingtalk-docs-reader --global
+npx skills add whhe/ai-workshop --skill github-issue-pr-draft --global
+npx skills add whhe/ai-workshop --skill resolve-review-comments --global
 ```
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `skill-path.sh` | Resolve a skill's absolute path by target (`repo \| claude \| cursor`) and name |
-| `sync-skill.sh` | Bidirectional sync between repo and claude/cursor: `pull` (external→repo) or `push` (repo→external) |
+| `skill-path.sh` | Resolve a skill's absolute path by target (`repo \| claude \| cursor \| global`) and name |
+| `sync-skill.sh` | Bidirectional sync between repo and claude/cursor/global: `pull` (external→repo) or `push` (repo→external) |
 | `lint-skill.sh` | Multi-round convention audit via Claude Code CLI — reads `skill-conventions.mdc`, fixes violations, loops until passing |
 
 ## License

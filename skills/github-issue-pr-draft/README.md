@@ -25,7 +25,7 @@ The skill guides an AI coding agent through a 5-step workflow:
 ## Install
 
 ```bash
-npx skills add whhe/ai-workshop --skill github-issue-pr-draft
+npx skills add whhe/ai-workshop --skill github-issue-pr-draft --global
 ```
 
 ## Usage

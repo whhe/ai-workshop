@@ -22,7 +22,7 @@ The skill guides an AI coding agent through a 4-step workflow:
 ## Install
 
 ```bash
-npx skills add whhe/ai-workshop --skill code-analysis
+npx skills add whhe/ai-workshop --skill code-analysis --global
 ```
 
 ## Usage

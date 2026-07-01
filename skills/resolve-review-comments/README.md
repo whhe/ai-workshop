@@ -27,7 +27,7 @@ An Agent Skill for end-to-end resolution of unresolved review comments on a GitH
 ## Install
 
 ```bash
-npx skills add whhe/ai-workshop --skill resolve-review-comments
+npx skills add whhe/ai-workshop --skill resolve-review-comments --global
 ```
 
 ## Usage

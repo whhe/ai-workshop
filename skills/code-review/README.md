@@ -23,7 +23,7 @@ The skill guides an AI coding agent through a structured review workflow:
 ## Install
 
 ```bash
-npx skills add whhe/ai-workshop --skill code-review
+npx skills add whhe/ai-workshop --skill code-review --global
 ```
 
 ## Usage
