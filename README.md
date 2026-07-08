@@ -4,6 +4,7 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 
 ## What's Inside
 
+- **`.claude/`** — Portable Claude Code global configuration
 - **`.cursor/rules/`** — Cursor AI rules and project conventions
 - **`skills/`** — Reusable Agent Skills for AI coding assistants
 - **`scripts/`** — Shell utilities for managing skills locally
@@ -19,6 +20,8 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 | [resolve-review-comments](./skills/resolve-review-comments/) | End-to-end resolution of unresolved review comments on a GitHub PR or GitLab MR: fetch unresolved threads, triage, implement, self-review, commit, push, mark threads resolved, and update the PR/MR description. |
 
 ### Install
+
+The Claude Code global config assumes the rules are synced to `~/.cursor/rules/` and the listed skills are installed globally.
 
 Install all skills:
 

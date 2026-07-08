@@ -13,6 +13,7 @@
 
 ```
 .
+├── .claude/                 # Claude Code global config
 ├── .cursor/rules/           # Cursor AI rules
 ├── skills/                  # Agent Skills
 ├── .gitignore
