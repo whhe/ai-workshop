@@ -77,6 +77,8 @@ Before creating an issue or PR, **always** show the full content (title, labels,
 
 ## Commit message format
 
+All natural-language prose in commit messages—including the subject, body, and footers—**must be written in English**. Non-English text may appear only as an exact repository identifier, proper name, or quoted user-facing string; all surrounding prose must remain in English.
+
 Use **Semantic Commit Messages**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `style:`, `perf:`, `ci:`. Subject ≤72 chars; add body for non-trivial changes.
 
 First line: **`type(scope): title`** (e.g. `feat(permission): enterprise cutover with bug fixes`).
