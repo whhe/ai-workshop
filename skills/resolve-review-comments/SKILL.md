@@ -3,7 +3,7 @@ name: resolve-review-comments
 description: "End-to-end resolution of unresolved review comments on a GitHub PR or GitLab MR: fetch open threads, triage, implement fixes following project conventions, review-fix loop (via skill or inline fallback), commit, push, mark threads resolved, and update the PR/MR description. Use when given a PR or MR URL with review comments to address."
 ---
 
-IRON LAW: Every unresolved comment must be explicitly handled — as **Implement**, as **Skip** (with written technical justification), or as **Clarify** (awaiting user input). Silent omission is forbidden.
+IRON LAW: Every comment/note in an unresolved review scope must be explicitly recorded — actionable feedback as **Implement**, **Skip** (with written technical justification), or **Clarify** (awaiting user input), and non-actionable replies as **Context**. Silent omission is forbidden.
 
 # Resolve Review Comments
 
@@ -49,8 +49,10 @@ Stop if local branch diverges from remote head.
 
 ### 2. Fetch Unresolved Comments
 
+**Collection completeness ⛔ BLOCKING**: Fetch the complete collection before filtering or triage. Never assume a single API response contains all comments. Exhaust every pagination, cursor, continuation token, or equivalent mechanism exposed by the selected platform tool for each list query. Record the tool or endpoint, the number of pages or batches retrieved, and the terminal evidence that no continuation remains. An item count alone is not proof unless the platform provides an authoritative total and the retrieved count matches it. If completeness cannot be confirmed, stop and report the failure; never conclude that there are zero unresolved comments from a partial result.
+
 - **GitHub**: REST (`pulls/{pr}/comments`) does NOT expose resolved status. Use GraphQL — query `pullRequest.reviewThreads`, filter `isResolved: false`. Also fetch general issue comments via REST (`issues/{pr}/comments`).
-- **GitLab**: Fetch discussions (`merge_requests/{iid}/discussions`).
+- **GitLab**: Fetch discussions (`merge_requests/{iid}/discussions`). GitLab discussion lists are paginated by default, so continue until the complete collection has been retrieved. Apply the same completeness requirement to any separate notes list query.
 
   ⚠️ Discussion-level `resolved` field does not exist — `d.get("resolved")` always returns `None`. The authoritative status is `notes[0].resolved`:
 
@@ -62,21 +64,22 @@ Stop if local branch diverges from remote head.
 
   Discussions with an empty `notes` array are system-generated placeholders — skip them.
 
-Record per thread: thread/discussion ID (GitHub: node `id` for `resolveReviewThread` mutation — general issue comments fetched from `issues/{pr}/comments` have no such ID; mark them `reply_only`), file path + line, full comment text. Store the ID **verbatim and in full** as returned by the API — never truncate or abbreviate for display, because the same variable is used in Step 7. If you abbreviate for display, use a separate variable.
+Record the thread/discussion ID separately for resolution (GitHub: the review-thread node `id` for `resolveReviewThread`; GitLab: the discussion ID). Within every included thread/discussion, enumerate every comment/note and record its stable item ID, file path + line when applicable, and full text. Record each GitHub general issue comment by its comment ID and mark it `reply_only`. Store every ID **verbatim and in full** as returned by the API — never truncate or abbreviate the stored value for display. A previously seen thread/discussion ID does not prove that all of its current comments/notes have been triaged.
 
-Stop if zero unresolved threads.
+Stop if zero unresolved threads only after collection completeness has been confirmed.
 
 ---
 
 ### 3. Triage ⛔ GATE
 
-Classify every comment before touching code:
+Classify every recorded comment/note before touching code:
 
 | Decision | Criteria |
 |----------|----------|
 | **Implement** | Correct and applicable to this codebase |
 | **Skip** | Would break callers, adds dead code, or conflicts with codebase — state technical reason |
 | **Clarify** | Ambiguous intent — ask user |
+| **Context** | Non-actionable acknowledgement, status reply, or supporting information — record why no code or thread-state action is required |
 
 Rules:
 - Read target file + surrounding context before classifying.
@@ -145,10 +148,11 @@ Commit message must comply with **No review metadata** (see Global Rules).
 
 ### 7. Push & Mark Resolved
 
-Push branch, then per comment:
+Push branch, then determine one disposition per thread/discussion from all recorded items:
 
-- **Implemented → resolve thread** (for GitHub `reply_only` threads, post a reply with a link to the fixing commit instead — `IssueComment`s cannot be resolved via the mutation).
-- **Skipped → reply with technical reason, leave thread open** (reviewer must be able to respond).
+- **Resolve** only when every actionable item is **Implement** and no **Skip** or **Clarify** remains. **Context** items are neutral.
+- **Leave open** when any item is **Skip**; reply with the technical reason so the reviewer can respond. A **Clarify** item must remain open and cannot reach this step until the Step 3 gate is cleared.
+- For a GitHub `reply_only` general issue comment: **Implement** → post a reply with a link to the fixing commit; **Skip** → reply with the technical reason; **Context** → no state action. `IssueComment`s cannot be resolved via the mutation.
 
 Resolve API:
 - GitHub: GraphQL `resolveReviewThread` mutation with thread node `id` from Step 2.
@@ -158,9 +162,11 @@ Resolve API:
 - GitHub GraphQL: HTTP 2xx alone is not enough — inspect the GraphQL response for an `errors` array and confirm the mutation returned the resolved thread data.
 - GitLab REST: use the HTTP status code (2xx = success), **not** JSON body parsing. Response bodies from GitLab often contain non-ASCII characters (CJK text, emoji) that break naive `json.load()` in shell pipelines, causing false failure reports. A parse error on a 200 response is not a failure — do not retry.
 
-**One call per thread/discussion**: Call the resolve API exactly once per thread/discussion ID. For GitLab, do not retry just because the response body failed to parse. Never fall back to a "short" or reconstructed ID if parsing fails — that would create a duplicate resolve event.
+**One call per state transition**: Call each requested resolve or reopen API transition exactly once per thread/discussion ID. A conditional reopen after the completeness check is a separate transition and follows the same rule. For GitLab, do not retry just because the response body failed to parse. Never fall back to a "short" or reconstructed ID if parsing fails — that would create a duplicate state-change event.
 
 On genuine failure (GitHub GraphQL `errors` / missing mutation data, or non-2xx status for either platform): record thread ID, continue processing remaining threads, report all failures at end.
+
+After processing all threads, repeat Step 2's complete-collection fetch for the current unresolved scope. Also retrieve every processed review thread/discussion directly by its stored ID, including those now resolved, and compare all current comment/note IDs with the triage ledger. If any unseen item appears, reopen its thread/discussion first when it is resolved (GitHub: `unresolveReviewThread`; GitLab: set `resolved` to `false`) and apply the same success checks and one-call rule above, then return to Step 3 with the current complete unresolved set. If the reopen fails or collection completeness cannot be confirmed, report the failure instead of proceeding to Step 8 or claiming completion.
 
 ---
 
@@ -182,7 +188,9 @@ If no update needed, state why and skip.
 
 ## Pre-Delivery Self-Check
 
-- [ ] Every unresolved comment has a decision: Implement, Skip (reason posted to thread), or Clarify (escalated to user).
+- [ ] Every comment-list query was exhausted, with its page or batch count and terminal evidence recorded before triage.
+- [ ] Every recorded comment/note is classified as Implement, Skip, Clarify, or Context; every Context entry states why it is non-actionable.
+- [ ] The post-processing complete-collection fetch found no comment/note ID missing from the triage ledger, including replies in previously seen threads/discussions.
 - [ ] All implemented fixes compile and pass linting.
 - [ ] Impact analysis (§5 step 1) identified all callers, consumers, and dependents of changed symbols.
 - [ ] Review-Fix Loop (§5) completed with zero findings, or unresolved issues reported to user.
