@@ -17,7 +17,7 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 | [code-review](./skills/code-review/) | Risk-priority code review with test-fix-retest closed loop. Covers behavioral regressions, SOLID/architecture, security, performance, dead code, and test coverage. |
 | [dingtalk-docs-reader](./skills/dingtalk-docs-reader/) | DingTalk document read-only access: list, download, extract text, export PDF. Cookie-based auth, no enterprise app approval needed. Table documents (asheet) not supported. |
 | [github-issue-pr-draft](./skills/github-issue-pr-draft/) | Draft/update GitHub issue and PR titles and bodies; writes only after explicit user confirmation. Templates, upstream resolution, and log redaction: see skill [SKILL.md](./skills/github-issue-pr-draft/SKILL.md). |
-| [resolve-review-comments](./skills/resolve-review-comments/) | End-to-end resolution of unresolved review comments on a GitHub PR or GitLab MR: fetch unresolved threads, triage, implement, self-review, commit, push, mark threads resolved, and update the PR/MR description. |
+| [resolve-review-comments](./skills/resolve-review-comments/) | End-to-end resolution of GitHub PR or GitLab MR feedback: completely collect and triage items, implement and self-review, synchronize replies and PR/MR context, conditionally push, transition threads, and verify review automation. |
 
 ### Install
 
