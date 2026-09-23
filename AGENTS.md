@@ -15,6 +15,7 @@
 .
 ├── .claude/                 # Claude Code global config
 ├── .cursor/rules/           # Cursor AI rules
+├── scripts/                 # Shell utilities for setup and skill management
 ├── skills/                  # Agent Skills
 ├── .gitignore
 ├── AGENTS.md                # This file (model-facing)
@@ -47,3 +48,9 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 | dingtalk-docs-reader | `skills/dingtalk-docs-reader/` |
 | github-issue-pr-draft | `skills/github-issue-pr-draft/` |
 | resolve-review-comments | `skills/resolve-review-comments/` |
+
+## Setup
+
+- `scripts/setup-codex.sh` initializes a machine, links `.cursor/rules/` into `~/.cursor/rules/`, generates `~/.codex/AGENTS.md`, and installs the tracked global skills.
+- `scripts/codex-skills.txt` is the source/name manifest for the skills managed by the setup and update scripts.
+- `scripts/update-codex.sh` updates an existing worktree and reconciles additions/removals in the managed global skills without reinitializing the machine.

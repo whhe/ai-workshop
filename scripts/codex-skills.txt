@@ -1,0 +1,16 @@
+# package|skill
+# Mandatory discovery skill.
+vercel-labs/skills|find-skills
+
+# Skills maintained in this repository.
+whhe/ai-workshop|code-analysis
+whhe/ai-workshop|code-review
+
+# Matt Pocock's skills.
+mattpocock/skills|codebase-design
+mattpocock/skills|grill-me
+mattpocock/skills|handoff
+mattpocock/skills|improve-codebase-architecture
+mattpocock/skills|resolving-merge-conflicts
+mattpocock/skills|setup-matt-pocock-skills
+mattpocock/skills|writing-for-agents
