@@ -58,5 +58,8 @@ alwaysApply: false
 
 ## Testing
 
-- Each new behavior needs at least one happy-path test and one failure/edge-case test. Name tests `test_<behavior>`.
-- Use fixtures for DB sessions, temp files, and mocks; avoid global mutable state.
+- Choose verification in proportion to the behavior's risk and the project's existing coverage. Do not treat TDD or test count as a goal by itself.
+- Add or update a test when it protects a changed observable contract, reproduces a bug that the current suite misses, or guards a high-risk boundary. A single discriminating test can be enough; do not require a happy-path and edge-case pair by default.
+- Before adding a test, check whether an existing test already proves the behavior and extend it instead of duplicating coverage. Do not add tests for documentation, configuration-only, wiring-only, or behavior-preserving refactors unless they expose a real unverified risk.
+- Assert observable outcomes, not implementation details or coverage percentages. If a test would not fail for a plausible regression, do not add it. Update tests when a changed contract makes their expectation obsolete; remove them only when they exclusively cover removed behavior. Preserve shared coverage.
+- Name new tests `test_<behavior>` and use fixtures for DB sessions, temp files, and mocks; avoid global mutable state.

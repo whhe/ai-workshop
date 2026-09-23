@@ -1,11 +1,11 @@
 ---
 name: code-review
-description: "Risk-priority code review with test-fix-retest closed loop. Use when the user asks to review code changes, evaluate merge readiness, audit for security or performance risks, or identify regressions in a branch or PR."
+description: "Risk-priority code review with proportional verification and an optional fix loop. Use when the user asks to review code changes, evaluate merge readiness, audit for security or performance risks, or identify regressions in a branch or PR."
 ---
 
 IRON LAW: Every finding MUST cite file, line range, and code evidence. No evidence = no finding.
 
-# Code Review — Risk-Priority with Fix Loop
+# Code Review — Risk-Priority with Proportional Verification
 
 ## Workflow
 
@@ -79,10 +79,10 @@ Load [removal-plan.md](references/removal-plan.md) if candidates are found.
 
 #### Pass F — Test Coverage & Language-Specific Checks
 
-- Every new behavior needs at least one happy-path and one failure/edge-case test.
-- Missing tests for changed logic count as regression risk.
-- Bug-fix changes need a regression test reproducing the original failure.
-- Cross-module changes need integration-level coverage.
+- Decide whether the changed observable contract has enough discriminating verification for its risk. Reuse existing tests and checks before adding new ones.
+- Missing tests count as regression risk only when the changed logic is materially unverified and the risk cannot be covered by a smaller existing, static, or manual check.
+- For a bug fix, add a focused regression test only when the current suite fails to catch the original failure and the case is stable and valuable to preserve. Do not add a duplicate when an existing discriminating test already fails on that same original failure before the fix, or when the change is documentation, configuration, wiring-only, or behavior-preserving refactoring.
+- Require integration-level coverage only when a cross-module contract or boundary is not meaningfully verified by focused checks. Do not duplicate unit and integration tests that prove the same observable outcome.
 - **Assertion discriminability**: verify fixtures and assertions can distinguish real behavior from bypass/no-op — including cases where filtered and unfiltered results would look the same under the data you used, or where one happy path cannot prove a branch ran. Strengthen with cardinality, identity or negative cases, or observable effects appropriate to the feature.
 
 Language-specific gotchas (non-obvious items the general passes may miss):
@@ -111,7 +111,7 @@ After presenting:
 Each iteration:
 
 1. Run the smallest relevant verification to establish a pre-fix baseline.
-2. Apply the minimal fix (avoid introducing new behavior).
+2. Apply the minimal fix (avoid introducing new behavior), adding or updating a targeted test only when the risk assessment above shows that it is needed to protect the changed contract.
 3. Re-run the same verification to confirm the fix.
 4. **Adversarial re-review** of the **entire diff** — same scope as Step 1 Preflight (`<base>..HEAD` or all uncommitted changes, now including any fixes applied so far). Do NOT scope the review to only the latest patch; fixes can introduce regressions elsewhere in the change.
 
@@ -132,9 +132,11 @@ Cap at **3 iterations**. If still unstable or if in-scope findings remain after 
 
 Test strategy (adapt per project):
 
-- **Python**: `pytest` on target test file first, then related directory.
-- **Frontend**: component/page tests first, then related suites.
-- **API changes**: at least one happy-path and one failure/edge-case.
+- Run the smallest existing check that exercises the changed contract, then broaden only when the change crosses a boundary or the focused check reveals a relevant dependency.
+- **Python**: run the target test or existing focused check first, then the related directory only when warranted by the change.
+- **Frontend**: run the affected component/page check first, then related suites only when the change crosses their contract.
+- **API changes**: verify the changed request/response or error contract with existing coverage; add one discriminating case only when that contract is otherwise unverified.
+- Do not create tests solely to increase coverage, mirror implementation branches, or make a report look complete. A test that cannot fail for a plausible regression is not useful. Record why no new test was needed when existing checks or the low-risk scope are sufficient.
 - **Missing prerequisites** (command not found, deps missing): state "unverified" with impact scope; provide reproducible commands; never fake results.
 
 ### 5. Pre-Publish Self-Check ⚠️ REQUIRED

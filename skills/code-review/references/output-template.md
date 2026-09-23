@@ -64,6 +64,7 @@ Output the review directly in the conversation. If the user explicitly requests 
 ## Test & Verification Notes
 - Checks performed / not performed
 - Language-specific checks applied
+- Why new tests were added, updated, or intentionally not added; distinguish existing coverage from unverified risk
 
 ## Merge Recommendation
 - Ready to merge / Mergeable after fixes / Not recommended

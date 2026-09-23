@@ -1,12 +1,12 @@
 # code-review
 
-An Agent Skill that performs risk-priority code review with an optional test-fix-retest closed loop.
+An Agent Skill that performs risk-priority code review with proportional verification and an optional fix loop.
 
 ## Features
 
-- **6-pass risk-priority audit** — behavioral regression, SOLID & architecture, security, performance, dead code removal, test coverage
+- **6-pass risk-priority audit** — behavioral regression, SOLID & architecture, security, performance, dead code removal, and proportional verification
 - **Evidence-based findings** — every issue cites file, line range, and code evidence
-- **Fix loop** — after review, optionally enters a test → fix → retest cycle (auto when user explicitly requests fixing, otherwise user-confirmed)
+- **Fix loop** — after review, optionally enters a verify → fix → re-verify cycle, adding tests only when the changed risk warrants them (auto when user explicitly requests fixing, otherwise user-confirmed)
 - **Adversarial re-review** — after each fix iteration, reviews the entire accumulated diff with the default stance that the fix may be wrong
 - **Language-specific checks** — Python datetime/ORM pitfalls, React hook dependency issues, JS polyfill risks
 - **Structured output** — severity-ranked report with clear pass/fail per category and traceable fix iterations

@@ -38,7 +38,7 @@ capabilities: [...]
 
 ```yaml
 # Good — capability + scope + scenarios as natural language
-description: "Risk-priority code review with test-fix-retest closed loop. Use when the user asks to review code changes, evaluate merge readiness, audit for security or performance risks, or identify regressions in a branch or PR."
+description: "Risk-priority code review with proportional verification and an optional fix loop. Use when the user asks to review code changes, evaluate merge readiness, audit for security or performance risks, or identify regressions in a branch or PR."
 
 # Bad — keyword bag, no semantic context
 description: "code review, 代码审查, review, audit, check, PR, security"

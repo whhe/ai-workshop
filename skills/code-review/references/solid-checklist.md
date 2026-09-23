@@ -59,7 +59,7 @@
 1. **Split by responsibility, not by size** — a small file can still violate SRP.
 2. **Introduce abstraction only when needed** — wait for the second use case.
 3. **Keep refactors incremental** — isolate behavior before moving.
-4. **Preserve behavior first** — add tests before restructuring.
+4. **Preserve behavior first** — reuse existing tests or add one focused characterization check only when the refactor exposes an unverified behavioral risk; do not create tests solely to enable restructuring.
 5. **Name things by intent** — if naming is hard, the abstraction might be wrong.
 6. **Prefer composition over inheritance** — inheritance creates tight coupling.
 7. **Make illegal states unrepresentable** — use types to enforce invariants.

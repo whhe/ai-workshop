@@ -47,6 +47,6 @@ These thoughts mean STOP — you're skipping a skill you should load:
 
 - When loading a skill, briefly state: "Using **[skill]** for [purpose]."
 - Always read the **latest file**; never rely on a previous conversation's memory of a skill.
-- **Rigid skills** (TDD, debugging): follow exactly. **Flexible skills** (patterns): adapt to context.
+- **Rigid workflow skills**: follow their required gates exactly. Do not infer a TDD requirement or add tests beyond what the task's risk and the skill explicitly require. **Flexible skills** (patterns): adapt to context.
 - **User instructions override skill instructions** when they conflict.
 - Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip skill workflows.
