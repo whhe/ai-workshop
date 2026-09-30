@@ -11,6 +11,5 @@ mattpocock/skills|codebase-design
 mattpocock/skills|grill-me
 mattpocock/skills|handoff
 mattpocock/skills|improve-codebase-architecture
-mattpocock/skills|resolving-merge-conflicts
 mattpocock/skills|setup-matt-pocock-skills
 mattpocock/skills|writing-for-agents
