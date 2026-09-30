@@ -19,7 +19,7 @@ An Agent Skill for end-to-end resolution of review feedback on a GitHub PR or Gi
 
 ## How It Works
 
-1. **Preflight** — parses the URL and derives a prospective guarded or bounded autonomous authorization mode from the complete request and parsed URL without keyword matching. Before any authenticated request, it checks the exact-host credential binding: guarded mode may authenticate and select or verify the exact binding, while prospective autonomous mode stops and reports if the binding is missing or ambiguous. Through the bound interface, it confirms the provider, authoritative PR/MR target, source repository URL/full ref, head SHA, and head trust boundary; then freezes the mode and, in autonomous mode, the standing envelope; records pre-existing work and finite visibility bounds; and inventories known review-automation triggers
+1. **Preflight** — parses the URL, identifies the exact host and provider, and checks whether `gh` or `glab` is installed. If it is missing, the workflow requests explicit user authorization before installing it, then waits for a successful recheck. It next checks the exact-host login, guides the user through login when needed, and continues only after authentication succeeds. Finally, it derives the authorization mode, confirms the authoritative PR/MR target, source repository URL/full ref, head SHA, and head trust boundary, and inventories known review-automation triggers
 2. **Fetch** — retrieves every review collection and nested connection to pagination completion
 3. **Ledger and triage** — normalizes canonical item IDs, fingerprints current revisions, classifies every independent request within each item, and records explicit reviewer acceptance before a skipped request can become closed
 4. **Implement and review** — applies minimal fixes, requires focused checks to pass, permits an explicitly accepted unverified scope only in guarded mode, and adversarially reviews the complete accumulated diff
@@ -34,20 +34,26 @@ The final complete review-context read is the optimistic linearization snapshot.
 
 ## Prerequisites
 
-For GitHub CLI fallback, authenticate to the exact PR host:
+For GitHub, install `gh` and authenticate to the exact PR host:
 
 ```bash
 gh auth login --hostname <github-host>
 ```
 
-For GitLab REST fallback, bind a token with API access to one exact host:
+For GitLab, install `glab` and authenticate to the exact MR host:
 
 ```bash
-export GITLAB_HOST=gitlab.example.com
-export GITLAB_TOKEN=your_personal_access_token
+glab auth login --hostname <gitlab-host>
 ```
 
-Require the normalized MR host to equal `GITLAB_HOST` before sending the token. Derive the API base URL only after that check; never send `GITLAB_TOKEN` to a host selected solely from the MR URL.
+The workflow checks the matching CLI and exact-host login with:
+
+```bash
+gh auth status --active --hostname <github-host>
+glab auth status --hostname <gitlab-host>
+```
+
+If the matching CLI is missing, the workflow asks for explicit authorization before running any installation command. If its exact-host login check fails, authenticate it before continuing. The workflow repeats both checks and proceeds only after they pass.
 
 ## Install
 
