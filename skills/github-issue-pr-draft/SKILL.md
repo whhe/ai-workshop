@@ -34,6 +34,8 @@ Identify in this order:
 
 ### 2. Task-Specific Context Gathering ⚠️ REQUIRED
 
+For PR tasks, load [pr-rules.md](references/pr-rules.md) before collecting commits or diffs. Resolve and verify the base using its **Base branch selection** rules first; for an existing PR, read its current base from platform metadata.
+
 - **Create issue**: keyword-search upstream for duplicates (open + closed). Surface likely matches before drafting. Collect reproduction facts (environment, steps, expected vs actual).
 - **Update issue**: read current state (title, body, labels, linked refs, recent comments). Identify what needs updating.
 - **Create PR**: enumerate commits since base branch, summarize diff, identify linked issues, flag breaking changes.
@@ -41,7 +43,7 @@ Identify in this order:
 
 ### 3. Draft Content ⚠️ REQUIRED
 
-Load the rules file matching the task type: [issue-rules.md](references/issue-rules.md) for issues, [pr-rules.md](references/pr-rules.md) for PRs. If the draft will include pasted logs, errors, or command output, also load [redaction.md](references/redaction.md).
+Apply the rules file matching the task type: load [issue-rules.md](references/issue-rules.md) for issues, or reuse [pr-rules.md](references/pr-rules.md) already loaded in Step 2 for PRs. If the draft will include pasted logs, errors, or command output, also load [redaction.md](references/redaction.md).
 
 ### 4. Confirmation Gate ⛔ BLOCKING
 
@@ -80,10 +82,10 @@ Perform only the confirmed actions; do not bundle extra changes. Return the resu
 
 Before Step 4, verify:
 
-- [ ] Title: no `#N`, `/issues/`, or `/pull/` fragments; imperative mood for issues; semantic format for PRs (`type(scope): subject`).
+- [ ] Title: no `#N`, `/issues/`, or `/pull/` fragments; imperative mood for issues; repository title convention for PRs, with semantic format as the fallback preference.
 - [ ] Related issues/PRs: inline linking keywords only (`Closes #N`, `Fixes #N`, `Refs #N`, `See #N`); no standalone `## Related` section unless the upstream template names it.
 - [ ] Content matches the **single** loaded rules file for this artifact (`issue-rules.md` or `pr-rules.md`).
-- [ ] PRs: body covers every non-trivial commit; breaking changes flagged with `!` in title and `## Breaking changes` section in body.
+- [ ] PRs: body covers every non-trivial commit; breaking changes use the repository's title notation (`!` when using semantic format) and explain impact and migration in the body, following the upstream template when present.
 - [ ] Issues: reproduction steps complete; expected vs actual behavior stated; environment details included.
 - [ ] Pasted logs: Bucket 1 applied; Bucket 2 placeholders + originals only under Open questions.
 - [ ] File refs: `path:line` or `path:start-end` format; no absolute paths.
@@ -95,5 +97,5 @@ Before Step 4, verify:
 |------|--------------|
 | [preflight-upstream.md](references/preflight-upstream.md) | Step 1 only if upstream `owner/repo` was not explicit in the user message |
 | [issue-rules.md](references/issue-rules.md) | Step 3–4: issue draft or update |
-| [pr-rules.md](references/pr-rules.md) | Step 3–4: PR draft or update |
+| [pr-rules.md](references/pr-rules.md) | Step 2 before selecting the base or collecting commits/diffs; reuse in Steps 3–4 for PR drafting and confirmation |
 | [redaction.md](references/redaction.md) | Step 3: body will include pasted logs, errors, or command output |

@@ -11,11 +11,11 @@ If no template exists, use the default template below.
 
 ## PR rules
 
-- **Title**: [semantic commit format](https://www.conventionalcommits.org/) — `type(scope): subject`.
+- **Title**: follow the repository's documented PR-title convention or validation rules. If none exist, prefer [semantic commit format](https://www.conventionalcommits.org/) — `type(scope): subject` — as a default.
   - Common types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`.
   - `scope` is optional (e.g., `fix: handle empty list` is valid).
-  - For breaking changes, append `!` to the type/scope (e.g., `feat(api)!: drop v1 endpoints`). Must agree with body's `## Breaking changes` section.
-  - Keep `subject` ≤ 72 chars.
+  - When using semantic format, mark breaking changes with `!` (e.g., `feat(api)!: drop v1 endpoints`). For another repository convention, use its breaking-change notation; describe the impact and migration in the body regardless.
+  - Prefer concise subjects, aiming for about 72 characters when practical. Enforce a hard limit only when the repository or platform requires it.
   - No issue/PR references in the title.
 - **Body structure** (use template if present; otherwise default):
   - `## Summary` — 1–3 sentences. Use [linking keywords](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) inline (`Closes #N` / `Fixes #N` for full resolution; `Refs #N` / `See #N` for related context) — no separate `## Related` section.
@@ -26,7 +26,7 @@ If no template exists, use the default template below.
 
 ## Base branch selection
 
-When creating a PR: `head → base`. Base selection order: use `main` if it exists on upstream; else `master`; else ask the user. Non-default long-lived branches (e.g., `develop`, release branches) require user confirmation.
+For a new PR, record `head → base`. Use an explicit user-selected base first, then applicable repository contribution or release guidance, then the upstream repository's authoritative default branch from platform metadata. Ask only when the target remains ambiguous or cannot be verified. When updating a PR, preserve its existing base unless the user requests retargeting. A familiar name such as `main` or `master` does not establish the intended base.
 
 ## Default PR template
 

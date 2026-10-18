@@ -9,14 +9,14 @@ IRON LAW: Every conclusion MUST trace back to source code — cite file path, li
 
 ## Workflow
 
-- [ ] Step 1: Scope & Depth ⛔ BLOCKING
+- [ ] Step 1: Scope & Depth ⚠️ REQUIRED
 - [ ] Step 2: Structure Discovery ⚠️ REQUIRED
 - [ ] Step 3: Compose Document ⚠️ REQUIRED
 - [ ] Step 4: Self-Check ⚠️ REQUIRED
 
-### 1. Scope & Depth ⛔ BLOCKING
+### 1. Scope & Depth ⚠️ REQUIRED
 
-Clarify with the user before proceeding:
+Determine the following from the request and available context. Ask only when missing information would materially change the analysis; otherwise state reasonable assumptions and proceed:
 
 | Question | Why it matters |
 |----------|----------------|
@@ -31,7 +31,7 @@ Determine depth tier:
 | **Feature** | One feature end-to-end | Entry point, flow, trigger conditions, edge cases, key code paths |
 | **Module** | One module / package | Public API surface, internal structure, dependencies, data flow |
 | **Cross-module** | Interaction between 2+ modules | Interface contracts, call chains, data transformations across boundaries |
-| **Codebase** | Entire repository | Architecture layers, component map, 2-3 critical end-to-end flows |
+| **Codebase** | Entire repository | Architecture layers, component map, representative critical end-to-end flows |
 
 If the user's request maps clearly to a tier, skip the clarification and proceed.
 
@@ -58,11 +58,11 @@ Map the structural relationships:
 - Shared state: globals, singletons, thread-locals, caches. Note lifecycle and ownership.
 - Configuration: where config is loaded, how it propagates, which values affect behavior branching.
 
-When the dependency graph has more than 5 nodes, produce a Mermaid component diagram.
+Use a component diagram when it makes dependencies or ownership boundaries easier to understand. Choose the format supported by the output destination; a table or prose may be clearer for simple relationships.
 
 #### Pass C — Core Flow Tracing
 
-Select 2-3 critical paths (user-facing or architecturally important) and trace each end-to-end.
+Select the critical paths needed to answer the user's question and trace each end-to-end. Scale coverage to the requested scope; neither stop at an arbitrary count nor add unrelated paths to meet a quota.
 
 For every path, cover ALL of the following:
 
@@ -73,41 +73,41 @@ For every path, cover ALL of the following:
 5. **Error path** — catch/fallback/retry logic: what exception is caught, how recovery works, whether side effects are rolled back.
 6. **Exit condition** — what the caller receives (return value, response, event emitted) and in what state the system is left.
 
-Use Mermaid flowcharts for paths with 3+ branches or async steps. Use sequence diagrams when the path crosses 3+ components.
+Use flowcharts for branching logic or sequence diagrams for cross-component interactions when they clarify the explanation. Choose diagrams based on communication value rather than branch or component counts.
 
 ### 3. Compose Document ⚠️ REQUIRED
 
-Assemble findings into the following structure.
+Use the following structure as a default for a standalone analysis document. Adapt sections, order, and detail to the user's question, audience, and output destination; a focused conversational answer need not become a full report.
 
 #### Metadata Table
 
-Place at the very beginning of the document:
+For a standalone document, include the following provenance when available. A table is optional; omit administrative metadata from a focused conversational answer unless requested.
 
 | Item | Value |
 |------|-------|
 | Author | `<tool>` / `<model>` |
 | Created | `<YYYY-MM-DD HH:mm>` (current time) |
-| Repository | HTTPS URL from `git remote get-url origin` |
+| Repository | Verified repository HTTPS URL, when available |
 | Commit | Short hash + subject, e.g. `a1b2c3d feat: add login` |
 
 Rules:
 - Author: use real tool/model name from runtime context. Fallback: `AI-assisted`. Never fabricate.
-- Repository: run `git remote get-url origin`, convert SSH to HTTPS, strip `.git`.
-- Commit: run `git log -1 --format='%h %s'`.
+- Repository: use the verified repository remote, convert SSH to HTTPS, and strip `.git`. If unavailable, state that rather than inventing a URL.
+- Commit: run `git log -1 --format='%h %s'` when Git metadata is available; distinguish uncommitted code when relevant.
 
 #### Document Body
 
-Follow this fixed order:
+Use these sections where they help answer the request; combine or reorder them as needed:
 
 **A. Overview** — One paragraph: what the system/feature does, who uses it, and why it exists.
 
-**B. Architecture / Component Diagram** — Mermaid diagram showing major components and their relationships. Required for Module tier and above; optional for Feature tier.
+**B. Architecture / Components** — Explain major components and their relationships, using a diagram when it adds clarity.
 
-**C. Feature / Module Analysis** — For each feature or module, present in this order:
+**C. Feature / Module Analysis** — For each feature or module, cover the relevant elements below:
 
 1. **Overall Logic Flow**
    - Describe the end-to-end flow in plain language first.
-   - Add a Mermaid flowchart or pseudocode block when the flow has branches, loops, or async steps.
+   - Add a flowchart or pseudocode block when it clarifies branches, loops, or async steps.
 
 2. **Usage & Trigger Conditions**
    - How the feature is invoked: UI entry, CLI command, scheduled task, event trigger, etc.
@@ -125,17 +125,17 @@ Follow this fixed order:
 
 3. **Implementation Details**
    - Prefer pseudocode + source file path over raw code.
-   - Reference source code as `startLine:endLine:filepath`; keep snippets ≤ 30 lines.
+   - Cite source file paths and line ranges using a format supported by the destination, such as `path:line`, `path:start-end`, or clickable source links. Quote the smallest snippet that preserves the relevant behavior; use a longer excerpt when necessary for context.
    - Highlight non-obvious design decisions, trade-offs, or known limitations.
    - Cover ALL branches, not just the happy path.
 
-**D. End-to-End Flow Traces** — The 2-3 paths traced in Pass C, presented as narrative with diagrams. Required for Cross-module and Codebase tiers; optional for Feature/Module.
+**D. End-to-End Flow Traces** — Present the paths selected in Pass C as narrative, with diagrams when useful. Include cross-module interactions relevant to the requested scope; combine with the per-module analysis to avoid repetition.
 
 **E. References** — Official docs, RFCs, design docs, ADRs, and links to key source files.
 
 ### 4. Self-Check ⚠️ REQUIRED
 
-Run every item before delivering. Each must pass.
+Run each applicable item before delivering. Record unavailable provenance or deliberately excluded scope rather than inventing details to fill a section.
 
 | # | Check | How to verify |
 |---|-------|---------------|
@@ -143,9 +143,9 @@ Run every item before delivering. Each must pass.
 | 2 | No "when condition is met" without stating the condition | Search for vague trigger phrases |
 | 3 | Every if/else and switch has all branches explained | Compare branch count in code vs document |
 | 4 | Error/catch paths are described, not skipped | Search for try/catch in traced code; confirm each is documented |
-| 5 | Mermaid diagrams match the text narrative | Walk through diagram nodes and verify they correspond to described steps |
-| 6 | Metadata table is complete and Repository URL is clickable | Verify all four rows are filled |
-| 7 | Author field uses real tool/model names, not fabricated | Confirm values match runtime context; if unknown, must say `AI-assisted` |
+| 5 | Any diagrams match the text narrative | Walk through diagram nodes and verify they correspond to described steps |
+| 6 | Standalone document provenance is accurate | Verify available repository/commit details and identify unavailable values |
+| 7 | Author attribution, when included, is accurate | Confirm values match runtime context; if unknown, use `AI-assisted` |
 
 ## Precision Requirements
 
@@ -175,7 +175,7 @@ For every catch/fallback/retry: state what is caught, recovery mechanism, and wh
 
 ## Anti-Patterns
 
-- Paste 50+ lines of raw source code without summarizing the logic.
+- Paste long blocks of raw source code without explaining the relevant logic.
 - Write "handles errors appropriately" or "processes the data" without specifics.
 - Describe only the happy path and skip else/default/catch branches.
 - Use "etc.", "and so on", or "other edge cases" to avoid enumerating boundaries.

@@ -5,7 +5,7 @@ An Agent Skill for reading DingTalk (钉钉) documents via cookie-based auth —
 ## Features
 
 - **Knowledge base traversal** — list spaces, walk directory trees
-- **Text extraction** — extract text from native `adoc` documents
+- **Text extraction** — extract text from native `adoc` documents with configurable depth and a visible warning when output is truncated
 - **PDF export** — export `adoc` documents to PDF
 - **File download** — download attachments (pdf, docx, xlsx, pptx, txt, md, png, jpg, jpeg)
 - **Link resolution** — follow `dlink` / `hlink` shortcut nodes to their targets
@@ -59,6 +59,8 @@ async def main():
         for child in children:
             print(f"{child['name']} ({child.get('extension', 'folder')})")
 ```
+
+Text extraction accepts `extract_text_from_alidocs(checkpoint, max_depth=50)`. The default depth limit is 25; skipped subtrees produce a `RuntimeWarning`, and the returned text should be treated as partial until deeper extraction succeeds. Raising the limit preserves the existing list-of-strings return value; Python's recursion limit still applies.
 
 ## License
 

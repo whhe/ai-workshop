@@ -7,8 +7,8 @@ An Agent Skill for structured source code analysis and feature deep-dive, produc
 - **Multi-pass analysis** — entry point discovery → dependency mapping → core flow tracing
 - **Depth tiers** — scales from single-feature analysis to full-codebase architecture overview
 - **Precision-first** — every conclusion cites file path and line range; trigger conditions, edge cases, and error paths are stated explicitly (never glossed over)
-- **Mermaid diagrams** — component diagrams for architecture, flowcharts for branching logic, sequence diagrams for cross-component interactions
-- **Structured output** — metadata table, architecture overview, per-module analysis, end-to-end flow traces, references
+- **Diagrams when useful** — component diagrams, flowcharts, or sequence diagrams chosen for clarity and destination support
+- **Adaptable output** — focused answers or standalone documents, with source citations and provenance appropriate to the requested scope
 
 ## How It Works
 
@@ -16,7 +16,7 @@ The skill guides an AI coding agent through a 4-step workflow:
 
 1. **Scope & Depth** — determine what to analyze (feature, module, cross-module, or codebase) and target audience
 2. **Structure Discovery** — three passes: entry points & boundaries, dependencies & layering, core flow tracing
-3. **Compose Document** — assemble findings into a structured document with diagrams and code references
+3. **Compose Document** — adapt the structure, path coverage, diagrams, and code excerpts to the question and audience
 4. **Self-Check** — verify every claim has code evidence, all branches are documented, no placeholders remain
 
 ## Install

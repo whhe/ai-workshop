@@ -13,7 +13,7 @@ IRON LAW: No review-automation trigger caused by this workflow's planned publica
 - [ ] 2. Fetch complete review context ⛔ BLOCKING
 - [ ] 3. Build the item ledger and triage ⛔ BLOCKING
 - [ ] 4. Implement fixes
-- [ ] 5. Review-fix loop (max 3 iterations)
+- [ ] 5. Review-fix loop until verification and full-diff review converge
 - [ ] 6. Commit and obtain publication approval
 - [ ] 7. Synchronize replies and PR/MR context ⛔ BLOCKING
 - [ ] 8. Push and transition threads
@@ -208,24 +208,24 @@ For each fix:
 
 1. Reproduce or verify the issue with the smallest relevant check when possible.
 2. Apply the minimal code change. Add or update a targeted test only when the changed observable contract or an uncovered stable regression warrants it; do not add duplicate tests for pure refactors, docs, configuration, or wiring-only changes.
-3. Run the smallest focused compilation, linting, existing test, or manual check that meaningfully verifies the change, then broaden only when the change crosses a boundary. Require every executed check to pass before publication; a known failing check always blocks publication. If a warranted check cannot run because trusted isolation or a prerequisite is unavailable, record the exact unverified scope and impact. In guarded mode, obtain explicit user acceptance before publication. In autonomous mode, stop-and-report without asking.
+3. Run the smallest focused compilation, linting, existing test, or manual check that meaningfully verifies the change, then broaden only when the change crosses a boundary. Require checks protecting the changed contract and repository-mandated publication gates to pass. Compare failures with the pre-fix baseline: new or worsened failures and failures of unknown relevance block publication. A proven pre-existing or unrelated failure may be reported without blocking only when evidence shows it is outside the accepted fix scope and does not invalidate verification of the changed contract; repository-mandated gates still apply. Record the failed check, baseline evidence, scope, and reason for that decision. If a warranted check cannot run because trusted isolation or a prerequisite is unavailable, record the exact unverified scope and impact. In guarded mode, obtain explicit user acceptance before publication when repository policy permits accepting that gap. In autonomous mode, stop-and-report without asking.
 4. Update callers and dependents only when the changed contract requires it.
 
 ## 5. Review-Fix Loop
 
-Run at most three iterations over the **entire accumulated diff**.
+Review the **entire accumulated diff** after each modification, without a fixed iteration cap.
 
 1. Map affected callers, consumers, implementers, importers, tests, and documented contracts.
-2. Re-read the full diff and affected code with the default assumption that the changes are wrong. If an isolated reviewer is available, provide only project conventions, the full diff, and the affected-code list—not fix rationale or earlier findings. Otherwise perform the same fresh-context review inline.
+2. Re-read the full diff and affected code with the default assumption that the changes are wrong. Verify earlier conclusions against current code and preserve iteration history. If an independent reviewer is available and delegation is authorized, provide project conventions, the full diff, and the affected-code list without leading it with fix rationale or an intended verdict. Otherwise perform the same evidence-driven review inline; do not claim to erase conversational context.
 3. Try to construct realistic failures for:
    - caller or compatibility breakage;
    - authorization, tenant isolation, or data-loss problems;
    - null/empty values, concurrency, partial failure, and resource bounds;
    - missing or non-discriminating tests where the changed risk warrants stronger verification;
    - inconsistent fixes across items.
-4. Report findings with file, line range, code evidence, and impact. On iterations one and two, fix all in-scope findings, rerun focused verification, then restart from the full diff.
+4. Report findings with file, line range, code evidence, and impact. Fix all in-scope findings, rerun focused verification, then restart from the full diff. Record out-of-scope findings without expanding authorization.
 
-Only observable failures and documented-contract violations are findings. Publication requires the Step 4 verification gate plus a clean full-diff verdict after the latest modification. If iteration three finds anything, do not modify or publish; stop and report the findings. Any further fix requires a newly authorized review cycle, so no final change can bypass a clean adversarial review.
+Only observable failures and documented-contract violations are findings. Continue until the Step 4 verification gate passes and the latest full-diff verdict has no remaining in-scope findings. If a missing prerequisite, a required decision outside the authorized scope, or repeated attempts without new evidence or improvement prevents progress, stop and report the unresolved findings, verification status, and concrete blocker. Iteration count alone does not require renewed authorization. Every final modification still requires a clean full-diff review before publication.
 
 ## 6. Commit and Obtain Publication Approval
 
@@ -362,7 +362,7 @@ Completion requires:
 - every list query has terminal pagination evidence;
 - every current item has a ledger row and every independent action record has a decision;
 - every planned workflow-emitted reply or manual-trigger comment/note has one authoritative item row;
-- every executed required check passed and no known failing check remains; in guarded mode, an unavailable required check may instead have an exact unverified scope and impact with explicit user acceptance, while autonomous mode requires every required check to have actually passed;
+- checks protecting the changed contract and repository-mandated publication gates passed, with no new, worsened, or unexplained failure; any non-blocking pre-existing or unrelated failure has the baseline evidence and scope justification required by Step 4; in guarded mode, an unavailable required check may instead have an exact unverified scope and impact with explicit user acceptance when repository policy permits, while autonomous mode requires every required check to have actually passed;
 - every executed mutation matched its exact mutation-authorization-ledger row; in autonomous mode, each general operation matched the standing envelope's PR/MR, operation, repository, ref, and final-SHA scope, each duplicate delete matched an independent exact-ID retain/delete grant without expanding that envelope, and each publication-lease lifecycle mutation matched the exact current PR/MR-scoped provider/repository-stable-ID/number key; every substitution and compensation was separately re-matched and recorded, and any pending lease release already has an authorized exact-key row;
 - no review trigger caused by this workflow's planned publication events was accepted or released before the final SHA was remote and every workflow-planned context write from the frozen snapshot other than the atomic operation emitting the final trigger was authoritative; historical and `must-reconcile` runs remain governed by their reconciliation requirements, while any earlier covered write has evidence that it could not accept or schedule a trigger, that the named later operation released the trigger against the final SHA and frozen publication context, and that any unsuppressed selected context trigger was frozen before publication, executed only after the final SHA was remote, and verified authoritative before transitions;
 - an exclusive publication lease covered all triggering or unknown non-idempotent writes, or every lease-free write satisfied its frozen preconditions and every triggering/unknown non-idempotent write was sent only at its frozen trigger-safe position without an unsafe retry;

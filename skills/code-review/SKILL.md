@@ -17,20 +17,27 @@ IRON LAW: Every finding MUST cite file, line range, and code evidence. No eviden
 
 ### 1. Preflight — Establish Baseline ⚠️ REQUIRED
 
-Collect in parallel:
+For a **PR URL**, fetch platform diff and metadata (base/head refs, description, comments, CI status). Confirm the local review head corresponds to that PR before computing a local baseline.
+
+Establish the requested review scope and freeze `baseline_commit` before reviewing:
+
+- For a branch or PR review, resolve the base branch and set `baseline_commit` to its merge base with the initial review head (`git merge-base <base> HEAD`). Default `base` to `main` unless the user or PR metadata specifies another branch.
+- For an uncommitted-change review, set `baseline_commit` to the initial `HEAD`.
+- Record any user-specified path limits. Keep the baseline fixed throughout the fix loop, including when fixes are committed.
+
+Collect in parallel, within that scope:
 
 - Branch state: `git status --short --branch`
-- Commits vs base: `git log --oneline --decorate --no-merges <base>..HEAD`
-- Change scope: `git diff --stat <base>...HEAD` and `git diff --name-only <base>...HEAD`
-
-Default `base` to `main`; override if user specifies another branch.
-For a **PR URL**, use the platform API to fetch diff and metadata (description, comments, CI status).
+- Commits since baseline: `git log --oneline --decorate --no-merges <baseline_commit>..HEAD`
+- Tracked changes, including commits, staged changes, and unstaged changes: `git diff --stat <baseline_commit>`, `git diff --name-only <baseline_commit>`, and `git diff <baseline_commit>`
+- Staging layers: when staged and unstaged edits coexist, also inspect `git diff --cached <baseline_commit>` and `git diff` so edits that cancel in the final working tree do not hide the staged state.
+- New files: `git ls-files --others --exclude-standard`; read each in-scope file separately, since tracked diffs omit its content.
 
 Explore related modules, usages, contracts, entry points, ownership boundaries, and critical paths.
 
 ### 2. Risk-Priority Audit ⚠️ REQUIRED
 
-Review **all commits** on the branch. Execute passes in order.
+Review every change in the established scope, including all branch/PR commits when applicable and in-scope uncommitted and new files. Execute passes in order.
 
 #### Pass A — Behavioral Regression & Compatibility
 
@@ -113,20 +120,16 @@ Each iteration:
 1. Run the smallest relevant verification to establish a pre-fix baseline.
 2. Apply the minimal fix (avoid introducing new behavior), adding or updating a targeted test only when the risk assessment above shows that it is needed to protect the changed contract.
 3. Re-run the same verification to confirm the fix.
-4. **Adversarial re-review** of the **entire diff** — same scope as Step 1 Preflight (`<base>..HEAD` or all uncommitted changes, now including any fixes applied so far). Do NOT scope the review to only the latest patch; fixes can introduce regressions elsewhere in the change.
+4. **Adversarial re-review** of the **entire accumulated change** against Step 1's frozen `baseline_commit`: re-read `git diff <baseline_commit>` and all in-scope new files, plus the separate staging-layer diffs from Step 1 when applicable. This includes the original changes and every fix, whether committed, staged, unstaged, or untracked. A commit-only diff such as `<base>..HEAD` omits uncommitted fixes; a working-tree-only diff omits the branch's commits. Keep the original scope and baseline instead of reviewing only the latest patch.
 
    The re-review must be **adversarial**: its default stance is that the fix introduced new problems. The reviewer must actively try to refute the fix's correctness before accepting it. Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count as findings.
 
-   **Iteration equivalence**: every re-review — whether iteration 1 or 3 — must start from the same baseline context: project structure, conventions, and the current full diff. No prior re-review findings, fix rationale, or iteration history may carry forward. Only the diff content differs across iterations (it grows as fixes accumulate).
+   **Independent judgment**: re-read the current full diff, project conventions, and affected callers on every re-review. Treat earlier findings and fix rationale as claims to verify against current code. Preserve iteration history for traceability.
 
-   - **Preferred**: spawn a fresh subagent per iteration (iteration equivalence is automatic — each subagent starts with zero prior context). The prompt must:
-     1. Provide only the full diff and project context — no description of the fix intent or rationale.
-     2. Instruct: "Your job is to find problems in these changes. Default to 'this is wrong' and require evidence to accept. For each modified region, attempt to construct a realistic scenario where the code fails (e.g., edge cases, concurrency, null/empty inputs, type mismatches, caller breakage — adapt to what is relevant). Only flag issues that would cause observable failure in production or violate a documented contract — theoretical concerns that require multiple unlikely preconditions do not count. Mark clean if you cannot construct such a scenario after trying."
-     3. Apply Passes A, C, D, F with the adversarial stance (skip B and E — re-review targets regressions, not architecture or cleanup).
-   - **Fallback** (subagents unavailable): to satisfy iteration equivalence, reset context before each re-review — discard all prior re-review findings, fix rationale, and iteration history, then re-read the full diff from scratch (`git diff` or `git diff <base>..HEAD`). Apply Passes A, C, D, F as if this were the first and only re-review (skip B and E — re-review targets regressions, not architecture or cleanup). Before each pass, ask: "How could the changes in this pass be wrong?" Quality degrades across iterations as accumulated context becomes harder to discard — prefer the subagent path when available.
+   Apply Passes A, C, D, F (B and E remain part of the initial audit). For each modified region, try to construct a realistic failure scenario before accepting it. If an independent reviewer is available and delegation is authorized, provide project context and the full diff without leading it with the intended verdict or fix rationale. Otherwise perform the same evidence-driven review inline; do not claim that conversational context was erased.
 5. Expand scope only if the re-review (step 4) surfaces new issues within the agreed fix scope. If out-of-scope findings are discovered, record them in the Fix Loop Iterations table and report to user at the end of the Fix Loop.
 
-Cap at **3 iterations**. If still unstable or if in-scope findings remain after the final re-review, stop and report to user before proceeding.
+Continue without a fixed iteration cap until relevant verification passes and the latest full-diff re-review finds no remaining in-scope issues. If a missing prerequisite, a required decision outside the authorized scope, or repeated attempts without new evidence or improvement prevents further progress, stop and report the unresolved findings, verification status, and concrete blocker. Iteration count alone is not a reason to stop or request renewed authorization.
 
 **Iteration tracking**: Record each iteration's findings and fixes. The final report must include a per-iteration summary (iteration number, issue addressed, fix applied, verification result, re-review outcome) so the user can trace the fix history (see [output-template.md](references/output-template.md) § Fix Loop Iterations).
 

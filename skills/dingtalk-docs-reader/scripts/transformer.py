@@ -5,6 +5,7 @@ DingTalk document transformer - extracts text from alidocs format.
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Any
 
 _RE_UUID_STANDARD = re.compile(
@@ -52,39 +53,63 @@ def _is_noise(s: str) -> bool:
     return False
 
 
-def extract_text_from_alidocs(obj: Any, depth: int = 0) -> list[str]:
+def extract_text_from_alidocs(
+    obj: Any, depth: int = 0, *, max_depth: int = MAX_RECURSION_DEPTH
+) -> list[str]:
     """
     Recursively extract text from alidocs checkpoint (application/x-alidocs-package).
 
     Args:
         obj: Parsed JSON object from checkpoint content.
-        depth: Current recursion depth.
+        depth: Starting recursion depth, retained for existing callers.
+        max_depth: Maximum included depth, relative to the document root.
 
     Returns:
         List of extracted text strings.
+
+    Warns:
+        RuntimeWarning: One or more subtrees were skipped at the depth limit.
+
+    Raises:
+        ValueError: max_depth is negative.
     """
-    if depth > MAX_RECURSION_DEPTH:
-        return []
+    if max_depth < 0:
+        raise ValueError("max_depth must be non-negative")
     texts: list[str] = []
-    if isinstance(obj, dict):
-        # Keys whose values are already captured as explicit text fields;
-        # skip them during the generic obj.values() walk to avoid duplicates.
-        text_keys = set()
-        for key in ("text", "t"):
-            val = obj.get(key)
-            if isinstance(val, str):
-                stripped = val.strip()
-                if stripped:
-                    texts.append(stripped)
-                    text_keys.add(key)
-        for k, v in obj.items():
-            if k not in text_keys:
-                texts.extend(extract_text_from_alidocs(v, depth + 1))
-    elif isinstance(obj, list):
-        for v in obj:
-            texts.extend(extract_text_from_alidocs(v, depth + 1))
-    elif isinstance(obj, str):
-        s = obj.strip()
-        if len(s) > 2 and not _is_noise(s):
-            texts.append(s)
+    truncated = False
+
+    def walk(node: Any, current_depth: int) -> None:
+        nonlocal truncated
+        if current_depth > max_depth:
+            truncated = True
+            return
+        if isinstance(node, dict):
+            # Skip explicit text fields during the generic walk to avoid duplicates.
+            text_keys: set[str] = set()
+            for key in ("text", "t"):
+                val = node.get(key)
+                if isinstance(val, str):
+                    stripped = val.strip()
+                    if stripped:
+                        texts.append(stripped)
+                        text_keys.add(key)
+            for key, value in node.items():
+                if key not in text_keys:
+                    walk(value, current_depth + 1)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value, current_depth + 1)
+        elif isinstance(node, str):
+            text = node.strip()
+            if len(text) > 2 and not _is_noise(text):
+                texts.append(text)
+
+    walk(obj, depth)
+    if truncated:
+        warnings.warn(
+            f"Text extraction truncated at max_depth={max_depth}; "
+            "increase max_depth to include deeper content.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     return texts

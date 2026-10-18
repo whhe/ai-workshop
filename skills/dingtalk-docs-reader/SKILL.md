@@ -250,10 +250,16 @@ texts = extract_text_from_alidocs(alidocs_json)
 
 The extractor:
 
-1. Walks the nested JSON recursively (depth-limited to 25)
+1. Walks the nested JSON recursively with a configurable `max_depth` (default 25, inclusive). If any subtree is skipped, emits one `RuntimeWarning` per call so partial extraction is visible; increase the limit deliberately when deeper content is expected.
 2. Collects values from `"text"` and `"t"` keys
 3. Filters noise (UUIDs, CSS values, type names, short IDs, bullet chars)
 4. Also captures bare strings in nested structures
+
+```python
+texts = extract_text_from_alidocs(alidocs_json, max_depth=50)
+```
+
+Treat a truncation warning as a partial result and report it with the extracted content; do not describe that result as the complete document. The existing positional `depth` parameter remains supported. The depth limit must be non-negative; very large values remain subject to Python's recursion limit.
 
 ## Error Handling
 
@@ -367,6 +373,7 @@ Source code lives in `scripts/` — invoke via `import`, do not load into contex
 |------|-------------|
 | `scripts/client.py` | Debugging API failures or extending the client with new endpoints |
 | `scripts/transformer.py` | Debugging text extraction quality or adding new content-type support |
+| `scripts/test_transformer.py` | Verifying extraction compatibility, configured depth, or truncation warnings after transformer changes |
 
 ## Pre-Delivery Checklist
 
@@ -375,3 +382,4 @@ Source code lives in `scripts/` — invoke via `import`, do not load into contex
 - [ ] `dlink`/`hlink` nodes resolved via `resolve_external_link` before download attempts
 - [ ] `download_file` only called for supported extensions (enforced internally; `ValueError` on mismatch)
 - [ ] `export_to_pdf` timeout (`max_wait`) is set high enough for large documents (default 120s)
+- [ ] Any text-extraction truncation warning is reported as partial output; `max_depth` is increased when deeper content must be included
