@@ -87,7 +87,7 @@ Complex skills should include a **trackable checklist** near the top of the skil
 | `⛔ BLOCKING` | Prerequisite — blocks all subsequent steps |
 | `(conditional)` | Depends on earlier choices or runtime conditions |
 
-**Confirmation gates** — steps involving destructive operations (delete, overwrite) or high-cost generation must stop and ask the user before proceeding.
+**Execution gates** — default to task-scoped execution without per-operation confirmation. Confirm final content and target before creating an MR/PR; a dedicated issue/PR drafting workflow retains its final-content confirmation gate. Keep review-only skills non-mutating unless fixes are requested. For destructive or high-cost operations, require a clear task need, exact targets, attribution, and safety checks; stop and report unsafe or ambiguous scope rather than using a routine approval prompt as a substitute for evidence. Respect explicit user limits and higher-priority policy.
 
 ## Writing
 

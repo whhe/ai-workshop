@@ -23,7 +23,7 @@ Use the `resolve-review-comments` skill for review comments.
 
 ## Git Operations
 
-NEVER run `git commit` or `git push` without explicit user request. Always ask for confirmation before any commit or push operation.
+Proceed with task-scoped Git operations, including attributable commits and verified-target pushes, without separate authorization prompts. Respect explicit local-only/no-push limits and read-only requests. Creating a new MR/PR and the dedicated issue/PR drafting workflow require final-content confirmation; updating an existing MR/PR during task execution does not. Code review reports findings only by default; fix only when requested. Keep destination, attribution, verification, and concurrency safeguards.
 
 ## Package Installation
 

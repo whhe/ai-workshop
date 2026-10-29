@@ -34,41 +34,29 @@ Skip branch-name checks and work directly on the **current branch** only when **
 
 For all **other** repositories, when the **current branch** is a default branch (**`main`**, **`master`**, **`dev`**, or the repo's equivalent):
 
-1. **Ask** whether the user wants a new **`feature-...`** or **`fix-...`** branch before proceeding. Do not assume work should happen on the default branch.
-2. If the user agrees to create a branch, **before creating it**, check whether the **local default branch** matches its **remote tracking branch** (e.g. after `git fetch`, compare `main` and `origin/main`).
-3. If local is behind or diverges, **tell the user to pull/sync first** and why. Do **not** run `git pull` unless they explicitly ask.
-4. Create or switch branches only after **explicit** user agreement on the steps.
+1. Inspect the authoritative remote default-branch head and local tracking state; fetch as needed. If local is behind or diverged, stop and report the mismatch rather than implicitly merging or rebasing unrelated work.
+2. When synchronized, create an appropriately named **`feature-...`** or **`fix-...`** branch without a separate confirmation. Preserve unrelated work using an isolated worktree/index where needed.
 
-## No unsolicited git operations
+## Default Task Authorization
 
-Unless the user **clearly asks**, do **not** decide on your own to:
-
-- `git pull` or fetch/merge workflows (unless they explicitly ask to pull or sync)
-- `git commit` (unless they explicitly ask to commit or save a commit)
-- `git push` (unless they explicitly ask to push or "commit and push")
-
-If they ask to "submit code" / "commit", a **local** `commit` is OK; still **no push** unless they explicitly ask.
+- A request to implement or resolve a task permits the Git operations needed to complete it, including branch preparation, fetch, attributable commits, and push to the verified task repository/ref. Proceed without separate commit, push, or post-diff approval prompts; no special autonomy phrase is required.
+- Permission is not an obligation to publish: respect explicit limits such as local-only, draft-only, do-not-commit, or do-not-push. A read-only review or analysis request does not authorize fixes or publication.
+- Bind every operation to the current task, exact repository/ref, and attributable changes. Stop on ambiguous destinations, unsafe attribution, conflicting requirements, or failed verification. Default autonomy never authorizes unrelated work or bypasses platform permissions or higher-priority policy.
+- Creating a new MR/PR requires explicit confirmation of its final title, body, and target. Updating an existing MR/PR during task execution does not require a separate confirmation. A dedicated issue/PR drafting workflow retains its own final-content confirmation gate.
 
 ## Review before commit
 
-After making code changes, **always** show the diff to the user and wait for explicit confirmation before committing. The workflow is:
-
-1. Make edits and show the diff.
-2. Wait for user to confirm the changes.
-3. Only then `git commit`.
-4. Only `git push` if the user explicitly asks.
-
-"采纳" / "确认" on a proposed change means approval to **edit** — not to commit or push. Each step requires separate, explicit approval.
+Inspect the complete final diff and index, verify the changed contract, and stage only task-attributable changes before committing. Report changes and verification results without waiting for an approval exchange. Push only to a verified task destination, then verify the authoritative remote head.
 
 ## Stash
 
 - Before switching branches with uncommitted changes, use `git stash` to save work. Remind the user to `git stash pop` after switching back.
-- Do not run `git stash drop` unless the user explicitly asks.
+- Drop only a task-created stash after verifying its contents were restored; preserve pre-existing stashes. No separate confirmation is needed for safe task-owned cleanup.
 
 ## Rebase vs Merge
 
 - Prefer **rebase** for syncing feature branches with upstream (`git rebase main`), keeping a linear history.
-- Before rebasing, confirm with the user if the branch has been pushed to remote (rebase rewrites history).
+- Prefer appending commits on published branches. Rewrite task-owned history only when necessary for the requested task, repository policy permits it, and every affected commit is attributable. Verify the remote head and use an exact conditional lease; stop on shared/unattributed history, drift, or ambiguity rather than requesting routine approval or falling back to unconditional force.
 - Use **merge** only for integrating completed feature branches into the default branch.
 
 ## Commit message content

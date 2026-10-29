@@ -7,7 +7,7 @@ An Agent Skill for end-to-end resolution of review feedback on a GitHub PR or Gi
 - **Complete collection** — exhausts pagination for resolved and unresolved inline threads, general comments, all submitted review summaries including dismissed reviews, nested replies, and every terminal review-automation output observed at the triage linearization snapshot; an authoritatively expired or deleted historical output requires a tombstone plus an equivalent current-head replacement review
 - **Item-level ledger** — tracks stable comment/note IDs separately from thread/discussion IDs, with per-action decisions for multi-request comments plus revisions, accepted-Skip closure evidence, exactly one reusable reply per actionable item, and transitions
 - **Full triage gate** — classifies every current item and independently actionable request before code changes; an empty or clean review with no pending work exits read-only without modifying anything or requesting another review
-- **Semantic autonomous authorization** — recognizes a clear multilingual intent to delegate one PR/MR end to end without optional repeated confirmations, records a bounded standing authorization, preserves repository-mandated post-diff commit and separate-push checkpoints, and falls back to guarded mode when publication authority or non-interruption intent is ambiguous
+- **Autonomous by default** — a request to resolve feedback on an existing PR/MR covers task-scoped edits, commits, pushes, replies, metadata updates, thread transitions, and review requests without separate approval prompts; explicit report-only, local-only, or no-push limits remain binding
 - **Self-contained review loop** — performs impact analysis and adversarial review-fix iterations until verification and full-diff review converge; reports concrete blockers or lack of progress instead of imposing a round limit
 - **Change-only commit messages** — requires English prose and semantic subjects unless explicitly instructed otherwise, checks the complete message before committing, and excludes review/test execution reports and agent history even when installed without companion Git rules
 - **Change-only PR/MR descriptions** — checks the entire desired title and body, including retained text, for English prose and semantic titles unless explicitly overridden; excludes review/test execution reports, agent history, and process-only template sections, and reports conflicts with mandatory templates before publication
@@ -21,11 +21,11 @@ An Agent Skill for end-to-end resolution of review feedback on a GitHub PR or Gi
 
 ## How It Works
 
-1. **Preflight** — parses the URL, identifies the exact host and provider, and checks whether `gh` or `glab` is installed. If it is missing, the workflow requests explicit user authorization before installing it, then waits for a successful recheck. It next checks the exact-host login, guides the user through login when needed, and continues only after authentication succeeds. Finally, it derives the authorization mode, confirms the authoritative PR/MR target, source repository URL/full ref, head SHA, and head trust boundary, and inventories known review-automation triggers
+1. **Preflight** — parses the URL, identifies the exact host and provider, checks `gh` or `glab`, installs a missing CLI when environment policy permits or reports the prerequisite, and verifies exact-host login. Records the authoritative PR/MR, source repository URL/full ref, head SHA, trust boundary, task scope and explicit user restrictions, and review-automation triggers
 2. **Fetch** — retrieves every review collection and nested connection to pagination completion
 3. **Ledger and triage** — normalizes canonical item IDs, fingerprints current revisions, classifies every independent request within each item, and records explicit reviewer acceptance before a skipped request can become closed. After complete collection and reconciliation, exit with `no-action` if nothing requires handling; skip all remaining steps and make no repository or PR/MR changes, lease acquisition, or review request
-4. **Implement and review** — applies minimal fixes, verifies the changed contract and repository publication gates, distinguishes new failures from evidence-backed unrelated baseline failures, permits an explicitly accepted unverified scope only in guarded mode when repository policy allows, and adversarially reviews the complete accumulated diff
-5. **Commit and authorize** — commits attributable fixes locally and follows trusted-base approval rules in every mode; mandatory post-diff commit and separate-push checkpoints cannot be waived. The publication plan explicitly places replies and Resolve/Reopen transitions before metadata updates and push
+4. **Implement and review** — applies minimal fixes, verifies the changed contract and repository publication gates, distinguishes new failures from evidence-backed unrelated baseline failures, stops publication on required checks that cannot be verified, and adversarially reviews the complete accumulated diff
+5. **Commit and bind scope** — inspects the complete diff, commits attributable fixes locally, and binds the exact push SHA/repository/ref without separate confirmation. The publication plan places replies and Resolve/Reopen transitions before metadata updates and push
 6. **Synchronize context** — re-fetches all items with bidirectional deletion detection, publishes or reuses replay-safe replies, verifies each required thread transition, and then updates title/body only as needed. Exact-target authorization, lease or optimistic guards, duplicate protection, and safe compensation apply throughout
 7. **Trigger review** — with new commits, conditionally pushes the exact final SHA to the authoritative source repository/ref only after all context is verified. With no code update and an unchanged remote head, actively requests review using the configured integration's supported mechanism; an old successful run is not a substitute
 8. **Verify** — reconciles pre-existing in-flight work and every related output, requires an acceptable final-SHA review result linked to the new push or manual request, and compares visibility-window-separated snapshots within one non-resetting deadline. Reuse an equivalent automatic review for missing historical output, or actively request uncovered replacement scope after push. Clean outputs and neutral acknowledgements do not trigger another publication cycle
@@ -66,7 +66,7 @@ gh auth status --active --hostname <github-host>
 glab auth status --hostname <gitlab-host>
 ```
 
-If the matching CLI is missing, the workflow asks for explicit authorization before running any installation command. If its exact-host login check fails, authenticate it before continuing. The workflow repeats both checks and proceeds only after they pass.
+If the matching CLI is missing, the workflow installs it through a supported package manager when environment policy permits, or reports the missing prerequisite without adding a routine authorization prompt. If its exact-host login check fails, authenticate it before continuing. The workflow repeats both checks and proceeds only after they pass.
 
 ## Install
 
@@ -81,19 +81,11 @@ Provide a PR or MR URL to your AI coding agent:
 - "Resolve the review comments on this PR: https://github.com/owner/repo/pull/42"
 - "Address all open review threads on this MR: https://gitlab.example.com/group/project/-/merge_requests/7"
 
-These requests use guarded mode: commit, exact push, and each planned remote mutation require current-request preauthorization or explicit confirmation.
+These resolution requests proceed end to end by default. No special “autonomous” phrase or separate approval is needed for task-scoped edits, commits, pushes, replies, existing PR/MR title/body updates, Resolve/Reopen transitions, or review triggers. Creating a new PR/MR is outside this workflow and requires confirmation of final title, body, and target; a dedicated issue/PR drafting workflow retains its final-content confirmation gate. A read-only code review does not imply a request to fix or publish.
 
-For bounded end-to-end autonomous handling:
+Explicit limits such as “report only”, “local only”, or “do not push” narrow execution. The standing scope binds operations to one authoritative PR/MR, source repository, full ref, and attributable final SHA. Remove duplicate replies only when exact IDs and byte-identical content prove they belong to this workflow; preserve reviewer content and stop on ambiguity.
 
-```text
-全权处理这个 PR/MR：https://github.com/owner/repo/pull/42；范围内无需重复确认，遇到阻塞直接报告。
-```
-
-Equivalent requests in any language are interpreted by their complete meaning, not by matching this phrase. Autonomous mode requires a clear PR/MR target, end-to-end delegation, publication authority, and a request not to repeat confirmation prompts. Ambiguous requests remain in guarded mode.
-
-The default standing envelope covers triage, attributable edits and tests, replies, metadata updates, Resolve/Reopen transitions, review automation, and the exact PR/MR-scoped publication-lease lifecycle. It includes commit or exact-SHA push only when the trusted-base repository rules permit standing authorization for that operation. Repository-mandated post-diff commit confirmation and separate push confirmation remain mandatory. The envelope is bound to the current PR/MR, authoritative source repository, full ref, and attributable final SHA; optional repeated confirmation is waived only inside those bounds. Duplicate deletion and scope expansion are not included: deleting duplicates requires an independent grant naming the exact retain/delete IDs, and any expansion stops the workflow.
-
-Autonomous mode does not bypass verification or safety gates. An unresolved Clarify, failing or unverifiable required check, unsafe attribution, unrecoverable drift, unsafe trigger ordering, ambiguous remote result, lost publication ownership, scope expansion, or destructive operation outside the envelope stops the workflow and produces a blocker report without another question.
+Default autonomy removes routine approval exchanges, not verification or safety gates. Unresolved Clarify, failing or unavailable required checks, unsafe attribution, unrecoverable drift, ambiguous remote results, lost publication ownership, scope expansion, or unsafe destructive operations stop execution with a concrete blocker report. Platform permissions and higher-priority restrictions still apply. Empty or clean reviews retain the no-action exit.
 
 ## License
 

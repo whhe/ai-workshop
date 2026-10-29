@@ -19,6 +19,12 @@ A personal collection of AI-related mini-projects, skills, plugins, and configur
 | [github-issue-pr-draft](./skills/github-issue-pr-draft/) | Draft/update GitHub issue and PR titles and bodies; writes only after explicit user confirmation. Templates, upstream resolution, and log redaction: see skill [SKILL.md](./skills/github-issue-pr-draft/SKILL.md). |
 | [resolve-review-comments](./skills/resolve-review-comments/) | End-to-end resolution of GitHub PR or GitLab MR feedback: completely collect and triage items, implement and self-review, reply and transition threads, update PR/MR context, then push new commits or actively request review when feedback needs handling without code changes, and verify review automation. Exits read-only when no review work remains. |
 
+### Default execution
+
+- Implementation tasks and existing PR/MR feedback resolution proceed without separate approval for task-scoped commits, pushes, metadata updates, replies, thread transitions, or review triggers. Explicit local-only/no-push limits and safety/verification checks remain binding.
+- Creating a new MR/PR requires confirmation of final title, body, and target. The dedicated `github-issue-pr-draft` workflow retains its final-content confirmation gate, including updates performed through that skill.
+- `code-review` reports findings only by default; fixes require a request to fix, not an extra confirmation after such a request. Clean reviews with no pending feedback remain no-action.
+
 ### Install
 
 The Claude Code global config assumes the rules are synced to `~/.cursor/rules/`. The Codex setup manifest tracks the current global skill set; repository-only skills can be installed separately below.

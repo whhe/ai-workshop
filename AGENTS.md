@@ -30,10 +30,16 @@ Rules in `.cursor/rules/` mirror `~/.cursor/rules/` (system-level), except `yuqu
 | File | Always | Description |
 |------|--------|-------------|
 | `coding.mdc` | no | Coding conventions — load before creating or editing any source file |
-| `git.mdc` | no | Git — commit/rebase, branching, stash, push; English semantic commits and change-only messages; owner-repo checks in the rule file |
+| `git.mdc` | no | Git — task-scoped commits/pushes without separate approval; new MR/PR and dedicated drafting confirmation; English semantic commits; owner-repo checks |
 | `skill-conventions.mdc` | no | Skill authoring conventions — load when creating or editing a SKILL.md |
 | `skill-usage.mdc` | yes | Skill discovery & loading discipline (scan → match → load) |
 | `workflow.mdc` | yes | Think first, goal-driven execution, post-task cleanup, doc sync, project config |
+
+## Default Execution Policy
+
+- Execute task-scoped Git operations and existing PR/MR review resolution without separate authorization prompts; preserve explicit user limits and verification/safety gates.
+- Confirm final content and target before creating an MR/PR; the dedicated issue/PR drafting skill retains its confirmation gate.
+- `code-review` is report-only by default; enter its fix loop only when fixing is requested.
 
 ## Skill Constraints
 

@@ -26,7 +26,7 @@ alwaysApply: true
 
 After completing a task:
 
-1. **Review only changed files** — clean up residue **introduced by your changes**: temp scripts, debug logging, stale TODO comments. Uncommitted: clean directly. Committed: ask before removing. Pre-existing issues: mention, don't fix unless asked.
+1. **Review only changed files** — clean up residue **introduced by your changes**: temp scripts, debug logging, stale TODO comments. Uncommitted: clean directly. Committed task-owned residue: use a follow-up attributable change without a separate approval prompt; preserve unrelated history. Pre-existing issues: mention, don't fix unless part of the requested scope.
 2. Update docs and artifacts affected by the change: README, `AGENTS.md`, API docs, `.cursor/rules/*.mdc`, startup scripts, `Dockerfile`, etc. **Always keep `.mdc` rules and `AGENTS.md` in sync with the latest codebase state.**
    - **Model-facing** (AGENTS.md, API docs, cursor rules): keep accurate and concise; optimize for model consumption; output as skills when useful.
    - **Human-facing** (README, Dockerfile, scripts): write for human readers.

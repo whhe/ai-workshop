@@ -109,7 +109,7 @@ Load [output-template.md](references/output-template.md) for document structure,
 
 After presenting:
 - If the user's original request **explicitly included fixing** (e.g., "review and fix", "fix everything", "review then fix all issues"): automatically proceed to Fix Loop for **all findings** — no confirmation needed. Override the default only if the user explicitly scoped the fix (e.g., "fix High only"). **Negative examples** — these do NOT count as fix requests: "review this fix", "review my bugfix branch", "check if this fix is correct" — here "fix" describes existing work, not an instruction to apply fixes.
-- Otherwise: ask user how to proceed (fix all / fix High only / fix specific items / no changes). Do NOT implement changes until user confirms.
+- Otherwise: finish with the findings and recommendations only. Do not edit, commit, push, update PR/MR metadata, or trigger review automation. A review-only request does not imply fixing, and default Git autonomy does not expand it. Enter the fix loop only if the user subsequently requests fixes; do not add a routine confirmation prompt.
 
 ### 4. Fix Loop (conditional)
 
@@ -153,7 +153,7 @@ Run the self-check in [output-template.md](references/output-template.md) § Pre
 - Dismiss implicit behavior changes from default-value modifications.
 - Label an unverified item as "passed."
 - Bypass critical checks to make tests pass (removing auth, swallowing exceptions, downgrading security).
-- Commit or push without explicit user request.
+- Treat a review-only request as permission to fix, commit, or push. When fixing is requested, task-scoped Git operations may proceed under applicable Git rules without separate authorization prompts; respect any explicit local-only or no-push limit.
 - Make fixes before presenting findings.
 
 **Avoid:**
