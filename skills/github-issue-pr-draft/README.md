@@ -1,13 +1,14 @@
 # github-issue-pr-draft
 
-An Agent Skill that drafts and updates GitHub issue and pull request content for posting, with a blocking confirmation gate before any write. Follows upstream templates and repository title conventions, preferring semantic PR titles when no convention is specified.
+An Agent Skill that drafts and updates GitHub issue and pull request content for posting, with a blocking confirmation gate before any write. PRs require English prose and semantic titles unless explicitly instructed otherwise, and contain only change descriptions.
 
 ## Features
 
-- **Template-aware drafting** — detects upstream `ISSUE_TEMPLATE` / `PULL_REQUEST_TEMPLATE` and follows them verbatim; falls back to built-in defaults only when none exist
+- **Template-aware drafting** — detects upstream `ISSUE_TEMPLATE` / `PULL_REQUEST_TEMPLATE`; PR drafts retain change-related sections and omit process checklists, surfacing conflicts with mandatory template requirements before publication
 - **Smart upstream resolution** — single-remote repos pick automatically; fork scenarios (2 remotes, one matching the current GitHub login) auto-select the other as upstream; otherwise ask the user
 - **Confirmation gate** — never creates or mutates issues/PRs without explicit user approval of the final title, body, and target (including PR `head → base`)
-- **Repository-aware PR titles** — follows repository conventions and required limits; otherwise prefers [Conventional Commits](https://www.conventionalcommits.org/) format and concise subjects, with roughly 72 characters as guidance
+- **English semantic PR titles** — requires English prose and [Conventional Commits](https://www.conventionalcommits.org/) titles unless explicitly overridden by user instructions or documented repository requirements; keeps subjects concise, with roughly 72 characters as guidance
+- **Change-only PR descriptions** — describes changes, rationale, behavior, and compatibility/migration impact; excludes self-review, test execution/results, agent conversations, and unrelated metadata, including template boilerplate
 - **Base branch selection** — respects an explicit target or repository contribution guidance, then uses the upstream's verified default branch; preserves the base of an existing PR
 - **No references in titles** — forbids `#N` or issue/PR URLs in both issue and PR titles; all references go inline in body prose
 - **Three-bucket log redaction** — always strips absolute path prefixes and credentials from pasted logs; asks the user about context-dependent items (IPs, emails, internal domains, etc.); never touches narrative prose

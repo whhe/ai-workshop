@@ -1,5 +1,5 @@
 ---
-description: Git — load only when the work involves git commit (incl. --amend) or git rebase (incl. --continue/--abort/--skip).
+description: Git — load when committing, amending, rebasing, branching, stashing, or pushing.
 alwaysApply: false
 ---
 
@@ -71,19 +71,20 @@ After making code changes, **always** show the diff to the user and wait for exp
 - Before rebasing, confirm with the user if the branch has been pushed to remote (rebase rewrites history).
 - Use **merge** only for integrating completed feature branches into the default branch.
 
-## Issues and Pull Requests
+## Commit message content
 
-Before creating an issue or PR, **always** show the full content (title, labels, body) to the user and wait for explicit confirmation before executing the `gh` command.
+- **Language**: Unless explicitly instructed otherwise, write all natural-language prose in commit messages in **English**, including subjects, bodies, and footers. Preserve exact repository identifiers, proper names, and quoted user-facing strings when needed; write surrounding prose in English. The conversation's language alone is not an instruction to change message language.
+- **Change descriptions only**: Include only what changed, why it changed, and the resulting behavior, compatibility impact, or migration requirements. Relevant issue references may accompany the change description.
+- **Exclude process and unrelated metadata**: Never include self-review or self-test procedures/results, check commands or logs, agent conversation history, plans, approval exchanges, agent attribution, or completion claims such as "all tests passed" or "reviewed by agent". Describing added or changed test code is allowed; narrating its execution is not.
+- **Final check**: Inspect the exact commit message before committing. Remove anything that does not describe the change; keep verification reports and workflow discussion in the user conversation, outside the message payload.
 
 ## Commit message format
 
-All natural-language prose in commit messages—including the subject, body, and footers—**must be written in English**. Non-English text may appear only as an exact repository identifier, proper name, or quoted user-facing string; all surrounding prose must remain in English.
+Unless explicitly instructed otherwise, **require Semantic Commit Messages** for commit subjects: `type(scope): subject`. The scope is optional; use `!` for breaking changes (e.g. `feat(api)!: remove v1 endpoints`). A repository's documented requirement is an explicit exception; an existing commit subject alone is not.
 
-Use **Semantic Commit Messages**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `style:`, `perf:`, `ci:`. Subject ≤72 chars; add body for non-trivial changes.
+Common types: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `style`, `perf`, `build`, `ci`. Commit subject ≤72 chars. Add a change-focused commit body for non-trivial changes.
 
-First line: **`type(scope): title`** (e.g. `feat(permission): enterprise cutover with bug fixes`).
-
-Then group changes with `-` bullets by type:
+For a commit body with multiple change types, group changes with `-` bullets by type:
 
 ```
 feat(permission): enterprise cutover with bug fixes

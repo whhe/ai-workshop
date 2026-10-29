@@ -2,16 +2,22 @@
 
 ## Template policy
 
-If an upstream template exists, use it. For each unchecked checkbox item:
+Use the upstream template's change-related sections when present; otherwise use the default template below. The change-only content rules apply to the entire title and body, including template checklists and footers.
 
-- **User action** required (e.g., "I have signed the CLA"): ask the user.
-- **Automatable** (e.g., "Compared diff to issue scope", "Ran tests locally"): do it autonomously in Step 2.
+- Omit sections and checklists about review, testing execution/results, approvals, or agent workflow. Do not fill them with status claims or placeholder text.
+- If the repository explicitly requires such content, surface the conflict separately to the user before publication; do not silently include forbidden content or claim template compliance.
+- Perform applicable verification as part of the workflow; report its process and results only in the user conversation, outside the draft body.
 
-If no template exists, use the default template below.
+## Language and content boundary
+
+- Unless explicitly instructed otherwise, write all PR title, body, and footer prose in **English**. The conversation's language alone does not override this default. Preserve exact identifiers, proper names, and quoted user-facing strings as needed, with English surrounding prose.
+- Include only concrete changes, their rationale, resulting behavior, and compatibility or migration impact. Relevant issue references may accompany these descriptions.
+- Never include self-review or self-test procedures/results, check commands or logs, agent conversation history, plans, approval exchanges, agent attribution, or unrelated metadata. Claims such as "all tests passed" and "self-review found no issues" do not belong in the title or body.
+- Describe added or changed test code as a change (e.g., "Add regression coverage for empty input"); omit execution reports (e.g., "Ran pytest; all tests passed").
 
 ## PR rules
 
-- **Title**: follow the repository's documented PR-title convention or validation rules. If none exist, prefer [semantic commit format](https://www.conventionalcommits.org/) — `type(scope): subject` — as a default.
+- **Title**: unless explicitly instructed otherwise by the user or documented repository requirements, **require** [semantic commit format](https://www.conventionalcommits.org/) — `type(scope): subject`. A template or an existing non-semantic title alone is not an exception.
   - Common types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`.
   - `scope` is optional (e.g., `fix: handle empty list` is valid).
   - When using semantic format, mark breaking changes with `!` (e.g., `feat(api)!: drop v1 endpoints`). For another repository convention, use its breaking-change notation; describe the impact and migration in the body regardless.

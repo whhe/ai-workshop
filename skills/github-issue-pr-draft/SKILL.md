@@ -82,7 +82,9 @@ Perform only the confirmed actions; do not bundle extra changes. Return the resu
 
 Before Step 4, verify:
 
-- [ ] Title: no `#N`, `/issues/`, or `/pull/` fragments; imperative mood for issues; repository title convention for PRs, with semantic format as the fallback preference.
+- [ ] Title: no `#N`, `/issues/`, or `/pull/` fragments; imperative mood for issues; required semantic format for PRs unless explicitly overridden by user instructions or documented repository requirements.
+- [ ] PR language and format: English prose and a semantic title unless explicitly instructed otherwise; conversation language alone does not override the default.
+- [ ] PR content: title, body, and footers describe only changes, rationale, behavior, and compatibility/migration impact; no self-review, self-test narrative/results, agent conversation history, or unrelated metadata, including in template sections.
 - [ ] Related issues/PRs: inline linking keywords only (`Closes #N`, `Fixes #N`, `Refs #N`, `See #N`); no standalone `## Related` section unless the upstream template names it.
 - [ ] Content matches the **single** loaded rules file for this artifact (`issue-rules.md` or `pr-rules.md`).
 - [ ] PRs: body covers every non-trivial commit; breaking changes use the repository's title notation (`!` when using semantic format) and explain impact and migration in the body, following the upstream template when present.
